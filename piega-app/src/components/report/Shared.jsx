@@ -172,7 +172,7 @@ export function BeforeAfterReal({ beforeSrc, afterSrc, label }) {
   const hm = (cx) => {
     if (!cRef.current) return;
     const r = cRef.current.getBoundingClientRect();
-    setSplit(Math.max(10, Math.min(90, ((cx - r.left) / r.width) * 100)));
+    setSplit(Math.max(0, Math.min(100, ((cx - r.left) / r.width) * 100)));
   };
 
   return (

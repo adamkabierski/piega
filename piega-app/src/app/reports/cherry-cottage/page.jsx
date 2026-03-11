@@ -6,13 +6,14 @@ import { Reveal, Slab, Verse, Cap, Lab, Photo, BeforeAfterReal } from "@/compone
 import { ContextMap, CrossSection, FloorPlans, StreetElevation, SunStudy, ThatchLifecycle, ConditionMatrix, PriceGap, BudgetBars, Scenarios, MaterialPalette } from "@/components/report/Report2Schemas";
 import LoadingSpinner from "@/components/LoadingSpinner";
 
-const IMG_SLOT1 = "/images/report2-slot1.svg";
-const IMG_SLOT2 = "/images/report2-slot2.svg";
-const IMG_SLOT3 = "/images/report2-slot3.svg";
-const IMG_SLOT4B = "/images/report2-slot4b.svg";
-const IMG_BEFORE_AGA = "/images/report2-before-aga.svg";
-const IMG_SLOT5 = "/images/report2-slot5.svg";
-const IMG_SLOT6 = "/images/report2-slot6.svg";
+const IMG_SLOT1 = "/House_2/slot1.jpg";
+const IMG_SLOT2 = "/House_2/slot2.jpg";
+const IMG_SLOT3 = "/House_2/slot3.jpg";
+const IMG_SLOT4B = "/House_2/slot4b.jpg";
+const IMG_BEFORE_AGA = "/House_2/0e06563aaeab71b392f6e6d588615a7d.jpg";
+const IMG_SLOT5 = "/House_2/slot5.jpg";
+const IMG_SLOT6 = "/House_2/slot6.jpg";
+const IMG_SLOT7 = "/House_2/slot7.jpg";
 
 export default function CherryReport() {
   const [loaded, setLoaded] = useState(false);
@@ -121,7 +122,7 @@ export default function CherryReport() {
 
         <Reveal><Slab>The room someone actually lived in.</Slab></Reveal>
         <Reveal>
-          <BeforeAfterReal label="DRAG · THE AGA KITCHEN" beforeSrc={IMG_BEFORE_AGA} afterSrc={IMG_SLOT3} />
+          <BeforeAfterReal label="DRAG · THE AGA KITCHEN" beforeSrc={IMG_BEFORE_AGA} afterSrc={IMG_SLOT7} />
         </Reveal>
         <Reveal>
           <Verse>

@@ -6,12 +6,12 @@ import { Reveal, Slab, Verse, Cap, Lab, Photo, BeforeAfterReal } from "@/compone
 import { ContextMap, CrossSection, FloorPlans, StreetElevation, SunStudy, EnergyLoss, ConditionMatrix, PriceGap, BudgetBars, Scenarios, MaterialPalette } from "@/components/report/Report1Schemas";
 import LoadingSpinner from "@/components/LoadingSpinner";
 
-const IMG_BEFORE = "/images/report1-before.svg";
-const IMG_SLOT2 = "/images/report1-slot2.svg";
-const IMG_SLOT3 = "/images/report1-slot3.svg";
-const IMG_SLOT4 = "/images/report1-slot4.svg";
-const IMG_SLOT5 = "/images/report1-slot5.svg";
-const IMG_SLOT6 = "/images/report1-slot6.svg";
+const IMG_BEFORE = "/House_1/32cb151c0b16bebeb5cf4f5da0e686fb.jpeg";
+const IMG_SLOT2 = "/House_1/slot2.jpg";
+const IMG_SLOT3 = "/House_1/slot3.jpg";
+const IMG_SLOT4 = "/House_1/slot4.jpg";
+const IMG_SLOT5 = "/House_1/slot5.jpg";
+const IMG_SLOT6 = "/House_1/slot6.jpg";
 
 export default function WoodburyReport() {
   const [loaded, setLoaded] = useState(false);

@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { C } from "@/lib/theme";
 import { Reveal, Slab, Verse, Cap, Lab, Photo, BeforeAfterReal } from "@/components/report/Shared";
 import { ContextMap, CrossSection, FloorPlans, StreetElevation, SunStudy, EnergyLoss, ConditionMatrix, PriceGap, BudgetBars, Scenarios, MaterialPalette } from "@/components/report/Report1Schemas";
@@ -47,7 +48,7 @@ export default function WoodburyReport() {
 
         {/* Header */}
         <div style={{ padding: "24px 0 0", opacity: loaded ? 1 : 0, transition: "opacity 0.5s ease" }}>
-          <div style={{ fontFamily: "'Playfair Display',serif", fontSize: "14px", fontStyle: "italic", color: C.accentDark, letterSpacing: "0.02em" }}>Piega</div>
+          <Link href="/" style={{ fontFamily: "'Playfair Display',serif", fontSize: "14px", fontStyle: "italic", color: C.accentDark, letterSpacing: "0.02em", textDecoration: "none" }}>Piega</Link>
         </div>
 
         {/* Hero */}

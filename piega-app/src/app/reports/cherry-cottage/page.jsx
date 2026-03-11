@@ -88,7 +88,8 @@ export default function CherryReport() {
 
         <Reveal>
           <Verse style={{ color: C.warmGrey, fontSize: "clamp(13px,2vw,16px)" }}>
-            Alton Pancras. Population: 380. One church. No pub. The kind of village that people from cities describe as "remote" and people who live there describe as "home." <span style={{ fontFamily: "'Bebas Neue',sans-serif", color: C.terracotta, letterSpacing: "0.08em" }}>THIS IS A LIFE YOU HAVE TO MEAN.</span>
+            Alton Pancras. Population: 380. One church. No pub. The kind of village that people from cities describe as "remote" and people who live there describe as "home."
+            <span style={{ display: "block", marginTop: "10px", fontStyle: "normal", fontFamily: "'Bebas Neue',sans-serif", fontSize: "clamp(13px,2vw,16px)", color: C.terracotta, letterSpacing: "0.04em", textTransform: "uppercase" }}>This is a life you have to mean.</span>
           </Verse>
         </Reveal>
 
@@ -111,8 +112,7 @@ export default function CherryReport() {
         <Reveal>
           <Verse>
             The panelling is Georgian. The damp behind it is older. You can see the moisture mark at skirting level in the listing photos — they didn't try to hide it, which is either honesty or oversight.
-            <br /><br />
-            <span style={{ fontFamily: "'Inter',sans-serif", fontSize: "12px", color: C.warmGrey, fontStyle: "normal" }}>Listed Building Consent is required before any remedial work can begin. The process takes 8–16 weeks. Budget for lime plaster, not plasterboard.</span>
+            <span style={{ display: "block", marginTop: "10px", fontStyle: "normal", fontFamily: "'Inter',sans-serif", fontSize: "10px", color: C.tertGrey }}>Listed Building Consent is required before any remedial work can begin. The process takes 8–16 weeks. Budget for lime plaster, not plasterboard.</span>
           </Verse>
         </Reveal>
 
@@ -127,8 +127,7 @@ export default function CherryReport() {
         <Reveal>
           <Verse>
             The AGA is original. The kitchen was updated at some point in the 1990s — you can tell by the cabinet doors and the tiles behind the sink. Neither is worth keeping. But the layout is good and the AGA makes the room.
-            <br /><br />
-            <span style={{ fontFamily: "'Inter',sans-serif", fontSize: "12px", color: C.warmGrey, fontStyle: "normal" }}>The AGA was recently serviced. Conversion to oil or electric is possible but requires specialist consent given the listed status.</span>
+            <span style={{ display: "block", marginTop: "8px", fontStyle: "normal", fontFamily: "'Inter',sans-serif", fontSize: "10px", color: C.tertGrey }}>The AGA was recently serviced. Conversion to oil or electric is possible but requires specialist consent given the listed status.</span>
           </Verse>
         </Reveal>
 
@@ -139,8 +138,7 @@ export default function CherryReport() {
         <Reveal>
           <Verse>
             Someone put an electric heater on the floor of the main bedroom. That tells you everything you need to know about the heating situation. There is none. There has never been any. The previous occupants managed with the AGA, the inglenook, and the electric heater on the floor.
-            <br /><br />
-            <span style={{ fontFamily: "'Bebas Neue',sans-serif", color: C.terracotta, letterSpacing: "0.08em", fontSize: "clamp(12px,2vw,15px)" }}>INSTALLING CENTRAL HEATING IN A LISTED BUILDING REQUIRES CONSENT AND SPECIALIST CONTRACTORS. BUDGET £8,000–£15,000 AND 12 MONTHS.</span>
+            <span style={{ display: "block", marginTop: "10px", fontStyle: "normal", fontFamily: "'Bebas Neue',sans-serif", fontSize: "clamp(13px,2vw,16px)", color: C.terracotta, letterSpacing: "0.04em", textTransform: "uppercase" }}>Installing central heating in a listed building requires consent and about twelve thousand pounds.</span>
           </Verse>
         </Reveal>
 
@@ -166,8 +164,7 @@ export default function CherryReport() {
         <Reveal>
           <Verse>
             The thatch is the building. Not a feature, not a selling point — the actual structural roof covering. If it fails, the building fails. You need a thatching survey before you bid.
-            <br /><br />
-            <span style={{ fontFamily: "'Bebas Neue',sans-serif", color: C.terracotta, letterSpacing: "0.08em", fontSize: "clamp(12px,2vw,15px)" }}>A THATCH SURVEY BEFORE AUCTION IS NOT OPTIONAL.</span>
+            <span style={{ display: "block", marginTop: "8px", fontStyle: "normal", fontFamily: "'Bebas Neue',sans-serif", fontSize: "clamp(12px,1.8vw,15px)", color: C.terracotta, letterSpacing: "0.04em", textTransform: "uppercase" }}>A thatch survey before auction is not optional.</span>
           </Verse>
         </Reveal>
 
@@ -176,19 +173,21 @@ export default function CherryReport() {
         <Reveal><BudgetBars /></Reveal>
 
         {/* Total box */}
-        <div style={{ background: C.darkCard, borderRadius: "4px", padding: "16px", margin: "24px 0" }}>
-          {costs.map((c, i) => (
-            <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
-              <span style={{ fontFamily: "'Inter',sans-serif", fontSize: "9px", color: C.warmGrey }}>{c.l}</span>
-              <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: "12px", color: c.c }}>£{c.lo}K – £{c.hi}K</span>
+        <Reveal>
+          <div style={{ background: C.darkCard, borderRadius: "4px", padding: "16px", margin: "24px 0" }}>
+            {costs.map((c, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "center", marginBottom: "6px" }}>
+                <div style={{ width: "140px", fontFamily: "'Inter',sans-serif", fontSize: "9px", color: C.warmGrey, flexShrink: 0 }}>{c.l}</div>
+                <div style={{ flex: 1 }}><div style={{ height: "3px", background: c.c, opacity: 0.35, borderRadius: "2px", width: `${(c.hi / 360) * 100}%`, minWidth: "4px" }} /></div>
+                <div style={{ width: "68px", textAlign: "right", fontFamily: "'Bebas Neue',sans-serif", fontSize: "10px", color: c.c, flexShrink: 0 }}>£{c.lo}–{c.hi}K</div>
+              </div>
+            ))}
+            <div style={{ borderTop: `1px solid ${C.warmGrey}10`, marginTop: "8px", paddingTop: "8px", display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+              <Cap>Total envelope</Cap>
+              <span style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(22px,4vw,32px)", color: C.paper }}>£{totalLo}K – £{totalHi}K</span>
             </div>
-          ))}
-          <div style={{ height: "1px", background: C.bd, margin: "10px 0" }} />
-          <div style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(22px,4vw,32px)", color: C.paper, textAlign: "right" }}>
-            £{totalLo}K – £{totalHi}K
           </div>
-          <Cap style={{ textAlign: "right" }}>total cost to own and make habitable</Cap>
-        </div>
+        </Reveal>
 
         <Reveal>
           <Verse>A Grade II thatched cottage in an Area of Outstanding Natural Beauty, 10 miles from Dorchester, on a south-facing plot with woodland. At guide. The numbers are not the problem. The commitment is.</Verse>
@@ -204,17 +203,17 @@ export default function CherryReport() {
         <div style={{ width: "40px", height: "1px", background: C.accentDark, opacity: 0.2, margin: "36px auto" }} />
 
         {/* Gate */}
-        <div style={{ textAlign: "center", padding: "14px 0 64px" }}>
-          <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: "clamp(16px,2.5vw,20px)", color: C.paper, letterSpacing: "0.08em", marginBottom: "10px" }}>You read this far.</div>
-          <p style={{ fontFamily: "'Playfair Display',serif", fontStyle: "italic", fontSize: "13px", color: C.warmGrey, maxWidth: "340px", margin: "0 auto 16px", lineHeight: 1.6 }}>
-            This is one building. Yours is different. If you want us to look at the one you're considering, tell us where it is.
-          </p>
-          <div style={{ display: "flex", maxWidth: "320px", margin: "0 auto" }}>
-            <input type="email" placeholder="your@email.com" style={{ flex: 1, height: "38px", background: C.darkMid, border: `1px solid ${C.bd}`, borderRight: "none", padding: "0 12px", fontFamily: "'EB Garamond',serif", fontSize: "13px", color: C.paper, outline: "none" }} />
-            <button style={{ background: "transparent", border: `1px solid ${C.accentDark}`, fontFamily: "'Bebas Neue',sans-serif", fontSize: "11px", color: C.accentDark, padding: "0 14px", cursor: "pointer", letterSpacing: "0.1em" }}>SEND IT</button>
+        <Reveal>
+          <div style={{ textAlign: "center", padding: "14px 0 64px" }}>
+            <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: "clamp(16px,2.8vw,20px)", color: C.paper, letterSpacing: "0.04em", textTransform: "uppercase", marginBottom: "6px" }}>You read this far.</div>
+            <div style={{ fontFamily: "'Playfair Display',serif", fontSize: "13px", fontStyle: "italic", color: C.warmGrey, maxWidth: "340px", margin: "0 auto 20px", lineHeight: 1.5 }}>This is one building. Yours is different.</div>
+            <div style={{ display: "flex", maxWidth: "320px", margin: "0 auto", gap: "6px" }}>
+              <input type="email" placeholder="your@email.com" style={{ flex: 1, height: "38px", background: C.darkMid, border: `1px solid ${C.lightGrey}24`, borderRadius: "4px", color: C.paper, fontFamily: "'EB Garamond',serif", fontSize: "13px", padding: "0 12px", outline: "none" }} />
+              <button style={{ height: "38px", padding: "0 14px", background: "transparent", border: `1px solid ${C.accentDark}`, borderRadius: "4px", color: C.accentDark, fontFamily: "'Bebas Neue',sans-serif", fontSize: "11px", letterSpacing: "0.08em", cursor: "pointer" }}>SEND IT</button>
+            </div>
+            <Cap style={{ marginTop: "36px", opacity: 0.28 }}>Not affiliated with any estate agent. That is the point.</Cap>
           </div>
-          <Cap style={{ marginTop: "36px", opacity: 0.28 }}>Not affiliated with any estate agent. That is the point.</Cap>
-        </div>
+        </Reveal>
 
       </div>
     </div>

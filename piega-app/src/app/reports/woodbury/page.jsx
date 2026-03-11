@@ -89,7 +89,9 @@ export default function WoodburyReport() {
           <Photo src={IMG_SLOT2} aspect="21/9" tag="FROM THE DESK · 147M ELEVATION" />
         </Reveal>
         <Reveal>
-          <Verse>One hundred and forty-seven metres above sea level. You can see the whole Luton valley from the lower ground reception room. On a clear day, you can see past the airport. The listing doesn't mention this. It mentions the kitchen. <span style={{ color: C.terracotta }}>THIS VIEW IS NOT IN THE LISTING PRICE. IT SHOULD BE.</span></Verse>
+          <Verse>One hundred and forty-seven metres above sea level. You can see the whole Luton valley from the lower ground reception room. On a clear day, you can see past the airport. The listing doesn't mention this. It mentions the kitchen.
+            <span style={{ display: "block", marginTop: "10px", fontStyle: "normal", fontFamily: "'Bebas Neue',sans-serif", fontSize: "clamp(13px,2vw,16px)", color: C.terracotta, letterSpacing: "0.04em", textTransform: "uppercase" }}>This view is not in the listing price. It should be.</span>
+          </Verse>
         </Reveal>
 
         <Reveal><CrossSection /></Reveal>
@@ -112,8 +114,8 @@ export default function WoodburyReport() {
 
         <Reveal><Slab>The rooms above.</Slab></Reveal>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px" }}>
-          <Photo src={IMG_SLOT5} tag="KITCHEN · 5.7 × 2.3M" />
-          <Photo src={IMG_SLOT6} tag="LOUNGE DINER · 5.7 × 4.4M" />
+          <Reveal><Photo src={IMG_SLOT5} aspect="16/9" tag="KITCHEN · 5.7 × 2.3M" /></Reveal>
+          <Reveal delay={0.08}><Photo src={IMG_SLOT6} aspect="4/5" tag="LOUNGE DINER · 5.7 × 4.4M" /></Reveal>
         </div>
         <Reveal>
           <Verse>It's a galley kitchen. Functional, not generous. The lounge diner is better — full-width windows on the south face, the kind of afternoon light that makes a room feel twice its size. Both rooms have been finished but not finished properly. Someone stopped about 80% of the way through.</Verse>
@@ -128,7 +130,9 @@ export default function WoodburyReport() {
         <Reveal><ConditionMatrix /></Reveal>
 
         <Reveal>
-          <Verse>New render, new windows, new roof. The building has been touched but not completed. The lower ground reception is behind a retaining wall — there's no evidence of a damp-proof membrane. The legal pack will tell you more than the photos. <span style={{ color: C.terracotta }}>THE LEGAL PACK WILL TELL YOU WHAT THE PHOTOS CANNOT.</span></Verse>
+          <Verse>New render, new windows, new roof. The building has been touched but not completed. The lower ground reception is behind a retaining wall — there's no evidence of a damp-proof membrane. The legal pack will tell you more than the photos.
+            <span style={{ display: "block", marginTop: "8px", fontStyle: "normal", fontFamily: "'Bebas Neue',sans-serif", fontSize: "clamp(12px,1.8vw,15px)", color: C.terracotta, letterSpacing: "0.04em", textTransform: "uppercase" }}>The legal pack will tell you what the photos cannot.</span>
+          </Verse>
         </Reveal>
 
         <Reveal><PriceGap /></Reveal>
@@ -136,19 +140,21 @@ export default function WoodburyReport() {
         <Reveal><BudgetBars /></Reveal>
 
         {/* Total box */}
-        <div style={{ background: C.darkCard, borderRadius: "4px", padding: "16px", margin: "24px 0" }}>
-          {costs.map((c, i) => (
-            <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
-              <span style={{ fontFamily: "'Inter',sans-serif", fontSize: "9px", color: C.warmGrey }}>{c.l}</span>
-              <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: "12px", color: c.c }}>£{c.lo}K – £{c.hi}K</span>
+        <Reveal>
+          <div style={{ background: C.darkCard, borderRadius: "4px", padding: "16px", margin: "24px 0" }}>
+            {costs.map((c, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "center", marginBottom: "6px" }}>
+                <div style={{ width: "140px", fontFamily: "'Inter',sans-serif", fontSize: "9px", color: C.warmGrey, flexShrink: 0 }}>{c.l}</div>
+                <div style={{ flex: 1 }}><div style={{ height: "3px", background: c.c, opacity: 0.35, borderRadius: "2px", width: `${(c.hi / 450) * 100}%`, minWidth: "4px" }} /></div>
+                <div style={{ width: "68px", textAlign: "right", fontFamily: "'Bebas Neue',sans-serif", fontSize: "10px", color: c.c, flexShrink: 0 }}>£{c.lo}–{c.hi}K</div>
+              </div>
+            ))}
+            <div style={{ borderTop: `1px solid ${C.warmGrey}10`, marginTop: "8px", paddingTop: "8px", display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+              <Cap>Total envelope</Cap>
+              <span style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(22px,4vw,32px)", color: C.paper }}>£{totalLo}K – £{totalHi}K</span>
             </div>
-          ))}
-          <div style={{ height: "1px", background: C.bd, margin: "10px 0" }} />
-          <div style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(22px,4vw,32px)", color: C.paper, textAlign: "right" }}>
-            £{totalLo}K – £{totalHi}K
           </div>
-          <Cap style={{ textAlign: "right" }}>total cost to own and occupy</Cap>
-        </div>
+        </Reveal>
 
         <Reveal>
           <Verse>The question was never whether you can afford the house. It's whether you can afford the house and what comes next. This one comes with a view, a problem, and a decision. Not in that order.</Verse>
@@ -162,17 +168,17 @@ export default function WoodburyReport() {
         <div style={{ width: "40px", height: "1px", background: C.accentDark, opacity: 0.2, margin: "36px auto" }} />
 
         {/* Gate */}
-        <div style={{ textAlign: "center", padding: "14px 0 64px" }}>
-          <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: "clamp(16px,2.5vw,20px)", color: C.paper, letterSpacing: "0.08em", marginBottom: "10px" }}>You read this far.</div>
-          <p style={{ fontFamily: "'Playfair Display',serif", fontStyle: "italic", fontSize: "13px", color: C.warmGrey, maxWidth: "340px", margin: "0 auto 16px", lineHeight: 1.6 }}>
-            This is one building. Yours is different. If you want us to look at the one you're considering, tell us where it is.
-          </p>
-          <div style={{ display: "flex", maxWidth: "320px", margin: "0 auto" }}>
-            <input type="email" placeholder="your@email.com" style={{ flex: 1, height: "38px", background: C.darkMid, border: `1px solid ${C.bd}`, borderRight: "none", padding: "0 12px", fontFamily: "'EB Garamond',serif", fontSize: "13px", color: C.paper, outline: "none" }} />
-            <button style={{ background: "transparent", border: `1px solid ${C.accentDark}`, fontFamily: "'Bebas Neue',sans-serif", fontSize: "11px", color: C.accentDark, padding: "0 14px", cursor: "pointer", letterSpacing: "0.1em" }}>SEND IT</button>
+        <Reveal>
+          <div style={{ textAlign: "center", padding: "14px 0 64px" }}>
+            <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: "clamp(16px,2.8vw,20px)", color: C.paper, letterSpacing: "0.04em", textTransform: "uppercase", marginBottom: "6px" }}>You read this far.</div>
+            <div style={{ fontFamily: "'Playfair Display',serif", fontSize: "13px", fontStyle: "italic", color: C.warmGrey, maxWidth: "340px", margin: "0 auto 20px", lineHeight: 1.5 }}>This is one building. Yours is different.</div>
+            <div style={{ display: "flex", maxWidth: "320px", margin: "0 auto", gap: "6px" }}>
+              <input type="email" placeholder="your@email.com" style={{ flex: 1, height: "38px", background: C.darkMid, border: `1px solid ${C.lightGrey}24`, borderRadius: "4px", color: C.paper, fontFamily: "'EB Garamond',serif", fontSize: "13px", padding: "0 12px", outline: "none" }} />
+              <button style={{ height: "38px", padding: "0 14px", background: "transparent", border: `1px solid ${C.accentDark}`, borderRadius: "4px", color: C.accentDark, fontFamily: "'Bebas Neue',sans-serif", fontSize: "11px", letterSpacing: "0.08em", cursor: "pointer" }}>SEND IT</button>
+            </div>
+            <Cap style={{ marginTop: "36px", opacity: 0.28 }}>Not affiliated with any estate agent. That is the point.</Cap>
           </div>
-          <Cap style={{ marginTop: "36px", opacity: 0.28 }}>Not affiliated with any estate agent. That is the point.</Cap>
-        </div>
+        </Reveal>
 
       </div>
     </div>

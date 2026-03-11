@@ -86,7 +86,7 @@ export default function HomePage() {
           <Link href="/reports/woodbury" style={{ textDecoration: "none", color: "inherit", display: "flex", flexDirection: "column", background: C.darkCard, border: `1px solid ${C.bd}`, overflow: "hidden", transition: "border-color .4s, transform .4s", cursor: "pointer" }}
             onMouseEnter={e => { e.currentTarget.style.borderColor = C.bdh; e.currentTarget.style.transform = "translateY(-4px)"; }}
             onMouseLeave={e => { e.currentTarget.style.borderColor = C.bd; e.currentTarget.style.transform = "none"; }}>
-            <WoodburyCardSVG />
+            <img src="/House_1/slot4.jpg" alt="Woodbury" style={{ width: "100%", aspectRatio: "2.2/1", objectFit: "cover", display: "block" }} />
             <div style={{ padding: "16px 20px 20px", flex: 1, display: "flex", flexDirection: "column" }}>
               <div style={{ fontFamily: "'EB Garamond',serif", fontSize: "8px", letterSpacing: "0.22em", textTransform: "uppercase", color: C.terracotta, opacity: 0.55, marginBottom: "7px" }}>Auction · 18 March 2026</div>
               <div style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(18px,2.6vw,24px)", fontWeight: 700, lineHeight: 1.1, color: C.paper, marginBottom: "3px" }}>Woodbury</div>
@@ -103,9 +103,7 @@ export default function HomePage() {
           <Link href="/reports/cherry-cottage" style={{ textDecoration: "none", color: "inherit", display: "flex", flexDirection: "column", background: C.darkCard, border: `1px solid ${C.bd}`, overflow: "hidden", transition: "border-color .4s, transform .4s", cursor: "pointer" }}
             onMouseEnter={e => { e.currentTarget.style.borderColor = C.bdh; e.currentTarget.style.transform = "translateY(-4px)"; }}
             onMouseLeave={e => { e.currentTarget.style.borderColor = C.bd; e.currentTarget.style.transform = "none"; }}>
-            <div style={{ width: "100%", aspectRatio: "2.2/1", background: C.darkMid, display: "flex", alignItems: "center", justifyContent: "center", opacity: 0.7 }}>
-              <span style={{ fontFamily: "'Playfair Display',serif", fontStyle: "italic", fontSize: "13px", color: C.accent, opacity: 0.4 }}>Cherry Cottage · Alton Pancras</span>
-            </div>
+            <img src="/House_2/slot1.jpg" alt="Cherry Cottage" style={{ width: "100%", aspectRatio: "2.2/1", objectFit: "cover", display: "block" }} />
             <div style={{ padding: "16px 20px 20px", flex: 1, display: "flex", flexDirection: "column" }}>
               <div style={{ fontFamily: "'EB Garamond',serif", fontSize: "8px", letterSpacing: "0.22em", textTransform: "uppercase", color: C.terracotta, opacity: 0.55, marginBottom: "7px" }}>Auction · Digby Hall, Sherborne</div>
               <div style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(18px,2.6vw,24px)", fontWeight: 700, lineHeight: 1.1, color: C.paper, marginBottom: "3px" }}>Cherry Cottage</div>

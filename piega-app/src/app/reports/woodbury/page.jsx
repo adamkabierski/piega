@@ -9,7 +9,7 @@ import LoadingSpinner from "@/components/LoadingSpinner";
 const IMG_BEFORE = "/House_1/c9dda2ccfb09120044be4144198a6603.jpeg";
 const IMG_SLOT2 = "/House_1/slot2.jpg";
 const IMG_SLOT3 = "/House_1/slot3.jpg";
-const IMG_SLOT4 = "/House_1/c9dda2ccfb09120044be4144198a6603.jpeg";
+const IMG_SLOT4 = "/House_1/slot4.jpg";
 const IMG_SLOT5 = "/House_1/slot5.jpg";
 const IMG_SLOT6 = "/House_1/slot6.jpg";
 

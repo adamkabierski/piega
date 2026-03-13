@@ -107,7 +107,7 @@ export default function WoodburyReport() {
         </Reveal>
 
         <Reveal>
-          <BeforeAfterReal label="DRAG · THE GARDEN QUESTION" beforeSrc={IMG_BEFORE} afterSrc={IMG_SLOT4} />
+          <BeforeAfterReal label="DRAG · THE GARDEN QUESTION" beforeSrc={IMG_SLOT4} afterSrc={IMG_BEFORE} />
         </Reveal>
 
         <Reveal><MaterialPalette /></Reveal>

@@ -10,7 +10,7 @@ const IMG_SLOT1 = "/House_2/slot1.jpg";
 const IMG_SLOT2 = "/House_2/slot2.jpg";
 const IMG_SLOT3 = "/House_2/slot3.jpg";
 const IMG_SLOT4B = "/House_2/slot4b.jpg";
-const IMG_BEFORE_AGA = "/House_2/0e06563aaeab71b392f6e6d588615a7d.jpg";
+const IMG_BEFORE_AGA = "/House_2/e25d47e5e81cc74d3c7bc2b5cbc05cff.jpg";
 const IMG_SLOT5 = "/House_2/slot5.jpg";
 const IMG_SLOT6 = "/House_2/slot6.jpg";
 const IMG_SLOT7 = "/House_2/slot7.jpg";
@@ -117,12 +117,12 @@ export default function CherryReport() {
         </Reveal>
 
         <Reveal>
-          <BeforeAfterReal label="DRAG · THE PANELLED ROOM" beforeSrc={IMG_SLOT3} afterSrc={IMG_SLOT4B} />
+          <BeforeAfterReal label="DRAG · THE PANELLED ROOM" beforeSrc={IMG_SLOT4B} afterSrc={IMG_SLOT3} />
         </Reveal>
 
         <Reveal><Slab>The room someone actually lived in.</Slab></Reveal>
         <Reveal>
-          <BeforeAfterReal label="DRAG · THE AGA KITCHEN" beforeSrc={IMG_BEFORE_AGA} afterSrc={IMG_SLOT7} />
+          <BeforeAfterReal label="DRAG · THE AGA KITCHEN" beforeSrc={IMG_SLOT7} afterSrc={IMG_BEFORE_AGA} />
         </Reveal>
         <Reveal>
           <Verse>

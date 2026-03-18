@@ -1,0 +1,32 @@
+{
+  "manifest_version": 3,
+  "name": "Piega — Property Intelligence",
+  "version": "0.1.0",
+  "description": "Extracts structured property data from Rightmove listings for Piega analysis.",
+
+  "permissions": [
+    "storage",
+    "activeTab",
+    "tabs"
+  ],
+  "host_permissions": [
+    "*://*.rightmove.co.uk/properties/*"
+  ],
+
+  "background": {
+    "service_worker": "background.js"
+  },
+
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Piega"
+  },
+
+  "content_scripts": [
+    {
+      "matches": ["*://*.rightmove.co.uk/properties/*"],
+      "js": ["content_script.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

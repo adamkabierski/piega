@@ -1,0 +1,32 @@
+{
+  "manifest_version": 3,
+  "name": "Piega Parser",
+  "version": "0.1.0",
+  "description": "Silent property data parser — extracts listing data from portal pages and stores it locally. No UI.",
+
+  "background": {
+    "service_worker": "background.js"
+  },
+
+  "permissions": ["storage"],
+
+  "content_scripts": [
+    {
+      "matches": ["*://*.rightmove.co.uk/properties/*"],
+      "js": ["rightmove/content_script.js"],
+      "run_at": "document_idle"
+    }
+    /* Future domains — uncomment when ready:
+    ,{
+      "matches": ["*://*.zoopla.co.uk/for-sale/details/*"],
+      "js": ["zoopla/content_script.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["*://*.onthemarket.com/details/*"],
+      "js": ["onthemarket/content_script.js"],
+      "run_at": "document_idle"
+    }
+    */
+  ]
+}

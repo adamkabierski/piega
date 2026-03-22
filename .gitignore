@@ -1,0 +1,42 @@
+# ── Node ──────────────────────────────────────────────────────
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# ── Build outputs ─────────────────────────────────────────────
+dist/
+build/
+.next/
+out/
+.cache/
+*.tsbuildinfo
+
+# ── Environment / secrets ─────────────────────────────────────
+.env
+.env.local
+.env.*.local
+.env.development
+.env.production
+
+# ── Data files (large, regenerated on first run) ──────────────
+piega-backend/data/imd2019.csv
+
+# ── OS / Editor ───────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.swp
+*.swo
+.idea/
+.vscode/settings.json
+.vscode/launch.json
+
+# ── Chrome extension build artefacts ─────────────────────────
+piega-extension/*.crx
+piega-extension/*.pem
+piega-extension/*.zip

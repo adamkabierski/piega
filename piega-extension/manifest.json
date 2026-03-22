@@ -10,8 +10,14 @@
     "tabs"
   ],
   "host_permissions": [
-    "*://*.rightmove.co.uk/properties/*"
+    "*://*.rightmove.co.uk/properties/*",
+    "https://*.tile.openstreetmap.org/*",
+    "http://localhost:3001/*"
   ],
+
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; object-src 'self'; img-src 'self' https://*.tile.openstreetmap.org data:; connect-src 'self' http://localhost:3001 https://api.postcodes.io https://environment.data.gov.uk https://data.police.uk https://inspire.misoportal.com;"
+  },
 
   "background": {
     "service_worker": "background.js"

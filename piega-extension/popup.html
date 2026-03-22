@@ -4,181 +4,93 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Piega</title>
+  <link rel="stylesheet" href="lib/leaflet.css" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    body {
-      width: 340px;
-      min-height: 120px;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      font-size: 13px;
-      background: #fafafa;
-      color: #1a1a2e;
-    }
-
-    /* ── Header ── */
-    header {
-      background: #7c3aed;
-      color: #fff;
-      padding: 12px 16px 10px;
-    }
-    header .brand {
-      font-size: 16px;
-      font-weight: 700;
-      letter-spacing: 0.04em;
-    }
-    header .sub {
-      font-size: 11px;
-      opacity: 0.8;
-      margin-top: 1px;
-    }
-    header .source-badge {
-      display: inline-block;
-      margin-top: 6px;
-      padding: 2px 8px;
-      border-radius: 12px;
-      font-size: 10px;
-      font-weight: 600;
-      background: rgba(255,255,255,0.2);
-      letter-spacing: 0.03em;
-    }
-
-    /* ── Hero row (address + price) ── */
-    .hero {
-      background: #ede9fe;
-      padding: 10px 16px;
-      border-bottom: 1px solid #ddd6fe;
-    }
-    .hero .address {
-      font-weight: 600;
-      font-size: 13px;
-      color: #4c1d95;
-      line-height: 1.35;
-    }
-    .hero .price-line {
-      margin-top: 4px;
-      font-size: 12px;
-      color: #5b21b6;
-    }
-    .hero .pill {
-      display: inline-block;
-      background: #7c3aed;
-      color: #fff;
-      border-radius: 10px;
-      padding: 1px 8px;
-      font-size: 11px;
-      font-weight: 600;
-      margin-right: 4px;
-    }
-
-    /* ── Data table ── */
-    .data-table {
-      padding: 8px 0;
-    }
-    .row {
-      display: flex;
-      align-items: baseline;
-      padding: 4px 16px;
-    }
-    .row:nth-child(even) { background: #f3f0ff; }
-    .label {
-      flex: 0 0 120px;
-      color: #6b7280;
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-    .value {
-      flex: 1;
-      font-weight: 500;
-      word-break: break-word;
-      color: #1a1a2e;
-    }
-    .value.null {
-      color: #9ca3af;
-      font-style: italic;
-      font-weight: 400;
-    }
-
-    /* ── Footer ── */
-    footer {
-      border-top: 1px solid #e5e7eb;
-      padding: 10px 16px;
-      display: flex;
-      gap: 8px;
-    }
-    button {
-      flex: 1;
-      padding: 6px 0;
-      border: 1px solid #7c3aed;
-      border-radius: 6px;
-      font-size: 12px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: background 0.15s, color 0.15s;
-    }
-    #btn-copy { background: #fff; color: #7c3aed; }
-    #btn-copy:hover { background: #ede9fe; }
-    #btn-copy.copied { background: #7c3aed; color: #fff; border-color: #7c3aed; }
-
-    /* ── States ── */
-    .state {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      padding: 32px 20px;
-      text-align: center;
-      color: #6b7280;
-      gap: 8px;
-    }
+    body { width: 380px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 13px; background: #fafafa; color: #1a1a2e; }
+    header { background: #7c3aed; color: #fff; padding: 12px 16px 10px; display: flex; align-items: center; justify-content: space-between; }
+    .brand { font-size: 16px; font-weight: 700; letter-spacing: 0.04em; }
+    .sub   { font-size: 11px; opacity: 0.75; margin-top: 1px; }
+    .source-badge { font-size: 10px; font-weight: 600; background: rgba(255,255,255,0.2); border-radius: 12px; padding: 2px 8px; }
+    .hero { background: #ede9fe; padding: 10px 16px; border-bottom: 1px solid #ddd6fe; }
+    .hero .address { font-weight: 600; font-size: 13px; color: #4c1d95; }
+    .hero .pills { margin-top: 4px; display: flex; gap: 6px; flex-wrap: wrap; }
+    .pill { display: inline-block; background: #7c3aed; color: #fff; border-radius: 10px; padding: 1px 9px; font-size: 11px; font-weight: 600; }
+    .section-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #6b7280; padding: 10px 16px 4px; }
+    .cards { display: flex; flex-direction: column; gap: 0; }
+    .card { margin: 0 12px 8px; background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 10px 12px; }
+    .card.error { border-color: #fca5a5; background: #fff5f5; }
+    .card-header { display: flex; align-items: center; gap: 7px; font-weight: 700; font-size: 13px; margin-bottom: 6px; }
+    .card-header .icon { font-size: 16px; }
+    .card-body { color: #374151; font-size: 12px; line-height: 1.5; }
+    .card-body .big { font-size: 18px; font-weight: 700; color: #1a1a2e; }
+    .card-body .muted { color: #9ca3af; font-style: italic; }
+    .card-note { font-size: 10px; color: #9ca3af; margin-top: 4px; }
+    .decile-bar { display: flex; gap: 2px; margin: 6px 0 2px; }
+    .decile-seg { flex: 1; height: 8px; border-radius: 2px; background: #e5e7eb; }
+    .decile-seg.active-low  { background: #ef4444; }
+    .decile-seg.active-mid  { background: #f59e0b; }
+    .decile-seg.active-high { background: #22c55e; }
+    .decile-label { display: flex; justify-content: space-between; font-size: 9px; color: #9ca3af; margin-bottom: 4px; }
+    .zone-badge { display: inline-block; padding: 2px 10px; border-radius: 12px; font-size: 12px; font-weight: 700; margin-right: 6px; }
+    .zone-1 { background: #dcfce7; color: #15803d; }
+    .zone-2 { background: #fef9c3; color: #a16207; }
+    .zone-3 { background: #fee2e2; color: #b91c1c; }
+    .crime-cats { margin-top: 5px; }
+    .crime-row { display: flex; justify-content: space-between; margin-top: 3px; }
+    .crime-row .cat-name { color: #374151; }
+    .crime-row .cat-count { background: #f3f4f6; border-radius: 8px; padding: 0 7px; font-weight: 600; font-size: 11px; }
+    #map-container { margin: 0 12px 8px; border: 1px solid #e5e7eb; border-radius: 10px; overflow: hidden; }
+    #map { height: 180px; width: 100%; }
+    #map-label { font-size: 10px; color: #6b7280; text-align: center; padding: 4px; background: #f9fafb; border-top: 1px solid #e5e7eb; }
+    .state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 32px 20px; text-align: center; color: #6b7280; gap: 8px; }
     .state .icon { font-size: 28px; }
     .state .msg  { font-size: 13px; font-weight: 500; }
     .state .hint { font-size: 11px; color: #9ca3af; }
-    #spinner { animation: spin 0.9s linear infinite; display: inline-block; }
+    .spin { animation: spin 0.9s linear infinite; display: inline-block; }
     @keyframes spin { to { transform: rotate(360deg); } }
+    footer { border-top: 1px solid #e5e7eb; padding: 10px 12px; display: flex; gap: 8px; }
+    .btn { flex: 1; padding: 7px 0; border-radius: 7px; font-size: 12px; font-weight: 600; cursor: pointer; border: none; transition: opacity 0.15s; text-align: center; text-decoration: none; display: block; }
+    .btn:hover { opacity: 0.85; }
+    .btn-primary { background: #7c3aed; color: #fff; }
+    .btn-ghost { background: #f3f4f6; color: #374151; border: 1px solid #e5e7eb; }
+    .btn-ghost.copied { background: #7c3aed; color: #fff; }
   </style>
 </head>
 <body>
-
 <header>
-  <div class="brand">🏠 Piega</div>
-  <div class="sub">Property Intelligence</div>
+  <div><div class="brand">&#127968; Piega</div><div class="sub">Property Intelligence</div></div>
   <span class="source-badge" id="source-badge" style="display:none"></span>
 </header>
 
-<!-- States -->
-<div id="state-loading" class="state">
-  <span class="icon" id="spinner">⏳</span>
-  <span class="msg">Reading page…</span>
-</div>
+<div id="state-loading" class="state"><span class="icon spin">&#9203;</span><span class="msg">Reading page&hellip;</span></div>
+<div id="state-not-rightmove" class="state" style="display:none"><span class="icon">&#127969;</span><span class="msg">Not a Rightmove listing</span><span class="hint">Visit a property page at rightmove.co.uk/properties/&hellip;</span></div>
+<div id="state-no-data" class="state" style="display:none"><span class="icon">&#9888;&#65039;</span><span class="msg">No property data extracted yet</span><span class="hint">Try refreshing the Rightmove page</span></div>
 
-<div id="state-not-rightmove" class="state" style="display:none">
-  <span class="icon">🏡</span>
-  <span class="msg">Not a Rightmove listing</span>
-  <span class="hint">Visit a property page at rightmove.co.uk/properties/…</span>
-</div>
-
-<div id="state-no-data" class="state" style="display:none">
-  <span class="icon">⚠️</span>
-  <span class="msg">No data extracted yet</span>
-  <span class="hint">Try refreshing the Rightmove page</span>
-</div>
-
-<!-- Data panel -->
 <div id="panel" style="display:none">
   <div class="hero">
-    <div class="address" id="hero-address">—</div>
-    <div class="price-line" id="hero-price-line"></div>
+    <div class="address" id="hero-address">&mdash;</div>
+    <div class="pills" id="hero-pills"></div>
   </div>
 
-  <div class="data-table" id="data-table"></div>
+  <div class="section-title">Area Intelligence <span id="intel-spinner" class="spin" style="margin-left:6px">&#9203;</span></div>
+  <div class="cards" id="cards">
+    <div class="card" id="card-imd"><div class="card-header"><span class="icon">&#128202;</span> Deprivation (IMD)</div><div class="card-body"><span class="muted">Loading&hellip;</span></div></div>
+    <div class="card" id="card-flood"><div class="card-header"><span class="icon">&#127754;</span> Flood Risk</div><div class="card-body"><span class="muted">Loading&hellip;</span></div></div>
+    <div class="card" id="card-crime"><div class="card-header"><span class="icon">&#128658;</span> Crime</div><div class="card-body"><span class="muted">Loading&hellip;</span></div></div>
+    <div class="card" id="card-boundary"><div class="card-header"><span class="icon">&#128208;</span> Plot / Boundary</div><div class="card-body"><span class="muted">Loading&hellip;</span></div></div>
+  </div>
+
+  <div class="section-title">Map</div>
+  <div id="map-container"><div id="map"></div><div id="map-label">Property location</div></div>
 
   <footer>
-    <button id="btn-copy">Copy JSON</button>
+    <button class="btn btn-ghost" id="btn-copy">Copy JSON</button>
+    <a class="btn btn-primary" href="https://piega.co" target="_blank">See full Piega report &#8594;</a>
   </footer>
 </div>
 
+<script src="lib/leaflet.js"></script>
 <script src="popup.js"></script>
 </body>
 </html>

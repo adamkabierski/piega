@@ -25,6 +25,8 @@
  *     address, postcode,
  *     description, agent, tenure,
  *     addedOrReduced, imageCount,
+ *     photos:     [ { url: string, caption: string|null } ],
+ *     floorplans: [ { url: string, thumbnail: string } ],
  *   }
  */
 
@@ -72,6 +74,19 @@
     return null;
   }
 
+  /**
+   * Convert a Rightmove thumbnail URL to the full-size equivalent.
+   *   …/dir/property-photo/<hash>/<id>/<hash>_max_296x197.jpg
+   *   →  …/property-photo/<hash>/<id>/<hash>.jpg
+   * Works for both property-photo and property-floorplan paths.
+   */
+  function toFullPhotoUrl(url) {
+    if (!url) return null;
+    return url
+      .replace(/\/dir\/(property-)/, '/$1')   // remove leading /dir/ segment
+      .replace(/_max_\d+x\d+(\.jpg)/i, '$1'); // remove _max_WxH suffix
+  }
+
   /** Build the canonical shape from a Rightmove propertyData blob. */
   function normalise(pd, source) {
     return {
@@ -98,6 +113,34 @@
       tenure:         pd.tenure?.tenureType ?? null,
       addedOrReduced: pd.listingHistory?.listingUpdateReason ?? null,
       imageCount:     Array.isArray(pd.images) ? pd.images.length : null,
+      photos:         Array.isArray(pd.images)
+                        ? pd.images.map(img => {
+                            // Try known field names first, then scan ALL string values
+                            // for anything that looks like a Rightmove media URL
+                            const rawUrl =
+                              img.url ?? img.src ?? img.srcUrl ?? img.imageUrl ??
+                              img.thumbnail ?? img.originalUrl ?? img.fullUrl ??
+                              (typeof img === 'string' ? img : null) ??
+                              Object.values(img).find(
+                                v => typeof v === 'string' && v.includes('rightmove.co.uk')
+                              );
+                            return {
+                              url:     toFullPhotoUrl(rawUrl ?? null),
+                              caption: img.caption ?? img.alt ?? img.title ?? null,
+                            };
+                          }).filter(p => p.url)
+                        : [],
+      floorplans:     Array.isArray(pd.floorplanImages ?? pd.floorplans)
+                        ? (pd.floorplanImages ?? pd.floorplans).map(fp => {
+                            const rawUrl =
+                              fp.url ?? fp.src ?? fp.srcUrl ??
+                              (typeof fp === 'string' ? fp : null) ??
+                              Object.values(fp).find(
+                                v => typeof v === 'string' && v.includes('rightmove.co.uk')
+                              );
+                            return { url: toFullPhotoUrl(rawUrl ?? null), thumbnail: rawUrl ?? null };
+                          }).filter(f => f.url)
+                        : [],
     };
   }
 
@@ -198,6 +241,7 @@
                   latitude: ll.latitude, longitude: ll.longitude,
                   address: null, postcode: null, description: null,
                   agent: null, tenure: null, addedOrReduced: null, imageCount: null,
+                  photos: [], floorplans: [],
                 };
               }
             } catch (_) {}
@@ -224,6 +268,7 @@
             latitude: lat, longitude: lng,
             address: null, postcode: null, description: null,
             agent: null, tenure: null, addedOrReduced: null, imageCount: null,
+            photos: [], floorplans: [],
           };
         }
       }
@@ -273,6 +318,12 @@
           tenure:         null,
           addedOrReduced: null,
           imageCount:     null,
+          photos:         item.image
+                            ? (Array.isArray(item.image) ? item.image : [item.image])
+                                .map(u => ({ url: typeof u === 'string' ? u : u?.url ?? null, caption: null }))
+                                .filter(p => p.url)
+                            : [],
+          floorplans:     [],
         };
       }
     }
@@ -354,7 +405,76 @@
       tenure:         null,
       addedOrReduced: null,
       imageCount:     null,
+      photos:         [],  // filled by enrichment step
+      floorplans:     [],  // filled by enrichment step
     };
+  }
+
+  /* ═══════════════════════════════════════════════════════════
+   * MEDIA — DOM extraction of photos and floorplans
+   *
+   * Photos:    <a itemprop="photo"> … <meta itemprop="contentUrl" content="…">
+   * Floorplan: <a href="…#/floorplan…"><img src="…property-floorplan…">
+   * Both are stable schema.org / Rightmove patterns.
+   * ═══════════════════════════════════════════════════════════ */
+
+  function extractMediaFromDOM() {
+    const seenUrls = new Set();
+    function dedup(arr) {
+      return arr.filter(p => {
+        if (!p.url || seenUrls.has(p.url)) return false;
+        seenUrls.add(p.url);
+        return true;
+      });
+    }
+
+    // ── Strategy A: schema.org itemprop (most reliable, oldest pattern) ──
+    let photos = dedup(
+      [...document.querySelectorAll('a[itemprop="photo"]')].map(a => ({
+        url:     toFullPhotoUrl(a.querySelector('meta[itemprop="contentUrl"]')?.getAttribute('content')),
+        caption: a.getAttribute('title') ?? null,
+      }))
+    );
+
+    // ── Strategy B: any img[src*="property-photo"] (gallery images) ──────
+    if (!photos.length) {
+      photos = dedup(
+        [...document.querySelectorAll('img[src*="property-photo"]')].map(img => ({
+          url:     toFullPhotoUrl(img.getAttribute('src')),
+          caption: img.getAttribute('alt') ?? null,
+        }))
+      );
+    }
+
+    // ── Strategy C: og:image meta + data-testid gallery items ────────────
+    if (!photos.length) {
+      const ogImg = document.querySelector('meta[property="og:image"]')?.getAttribute('content');
+      if (ogImg && ogImg.includes('rightmove.co.uk')) {
+        photos = [{ url: toFullPhotoUrl(ogImg), caption: null }];
+      }
+    }
+
+    // ── Floorplans: anchor linking to #/floorplan containing a floorplan img
+    const seenFp = new Set();
+    const rawFloorplans = [
+      ...document.querySelectorAll(
+        'a[href*="floorplan"] img[src*="floorplan"], a[href*="floorplan"] img[alt*="loorplan"], img[src*="property-floorplan"]'
+      )
+    ].map(img => {
+      const thumb = img.getAttribute('src');
+      return { url: toFullPhotoUrl(thumb), thumbnail: thumb ?? null };
+    }).filter(f => {
+      if (!f.url || seenFp.has(f.url)) return false;
+      seenFp.add(f.url);
+      return true;
+    });
+
+    console.log(
+      '[PIEGA-PARSER] extractMediaFromDOM:',
+      photos.length, 'photos,',
+      rawFloorplans.length, 'floorplan(s)'
+    );
+    return { photos, floorplans: rawFloorplans };
   }
 
   /* ═══════════════════════════════════════════════════════════
@@ -468,6 +588,14 @@
     if (!result.postcode && result.address) {
       result.postcode = extractPostcode(result.address);
     }
+
+    // ── Enrichment 4: photos + floorplans from DOM ───────────────────────
+    // Always run DOM extraction — it's the most reliable source for media.
+    // __NEXT_DATA__ images may use unknown field names; DOM is authoritative.
+    const media = extractMediaFromDOM();
+    if (!result.photos?.length     && media.photos.length)     result.photos     = media.photos;
+    if (!result.floorplans?.length && media.floorplans.length) result.floorplans = media.floorplans;
+    if (result.photos?.length) result.imageCount = result.photos.length;
 
     return result;
   }

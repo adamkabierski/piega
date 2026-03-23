@@ -356,6 +356,8 @@
               ?.getAttribute('content') ?? null;
 
     const rawPrice = text(
+      '[data-testid="primaryPrice"] span:first-child',
+      '[data-monitor-testid="primaryPrice"] span:first-child',
       '[data-testid="price"]',
       '.propertyHeaderPrice',
       'p[class*="price" i]',
@@ -382,6 +384,30 @@
       'li[class*="bed" i]',
     );
 
+    // "Reduced on 21/03/2026" / "Added on 21/03/2026" etc.
+    const rawAddedOrReduced = text(
+      '[class*="reducedOn" i]',
+      '[class*="addedOn" i]',
+      '[class*="listingHistory" i]',
+    ) || (() => {
+      // Scan all text nodes for the "Reduced on" / "Added on" pattern
+      const match = document.body?.textContent?.match(
+        /((?:Reduced|Added|Re-listed)[^\n]{0,30}\d{2}\/\d{2}\/\d{4})/
+      );
+      return match ? match[1].trim() : null;
+    })();
+
+    // Property type from page title or heading (e.g. "2 bedroom detached house")
+    const rawPropertyType = text(
+      '[data-testid="property-type"]',
+      '[itemprop="name"]',
+    ) || (() => {
+      const m = document.title?.match(
+        /bedroom[s]?\s+([\w\s-]+?)\s+for\s+sale/i
+      );
+      return m ? m[1].trim() : null;
+    })();
+
     console.log('[PIEGA-PARSER] ✅ fromDOM (fallback)');
     return {
       _source:        'DOM',
@@ -391,7 +417,7 @@
       askingPrice:    parsePrice(rawPrice),
       priceCurrency:  'GBP',
       priceDisplay:   rawPrice,
-      propertyType:   null,
+      propertyType:   rawPropertyType,
       bedrooms:       bedroomsRaw
                         ? (parseInt(bedroomsRaw.match(/\d+/)?.[0], 10) || null)
                         : null,
@@ -403,7 +429,7 @@
       description:    rawDescription,
       agent:          null,
       tenure:         null,
-      addedOrReduced: null,
+      addedOrReduced: rawAddedOrReduced,
       imageCount:     null,
       photos:         [],  // filled by enrichment step
       floorplans:     [],  // filled by enrichment step
@@ -589,7 +615,27 @@
       result.postcode = extractPostcode(result.address);
     }
 
-    // ── Enrichment 4: photos + floorplans from DOM ───────────────────────
+    // ── Enrichment 4: price from DOM if primary source missed it ────────
+    if (!result.askingPrice) {
+      const rawPrice =
+        document.querySelector('[data-testid="primaryPrice"] span:first-child, [data-monitor-testid="primaryPrice"] span:first-child')
+                ?.textContent?.trim() ?? null;
+      if (rawPrice) {
+        result.askingPrice  = parsePrice(rawPrice);
+        result.priceDisplay = rawPrice;
+      }
+    }
+
+    // ── Enrichment 5: addedOrReduced from DOM if missing ────────────────
+    if (!result.addedOrReduced) {
+      const m = document.body?.textContent?.match(
+        /((?:Reduced|Added|Re-listed)[^\n]{0,30}\d{2}\/\d{2}\/\d{4})/
+      );
+      if (m) result.addedOrReduced = m[1].trim();
+    }
+
+    // ── Enrichment 6: photos + floorplans from DOM ───────────────────────
+    // ── Enrichment 6: photos + floorplans from DOM ───────────────────────
     // Always run DOM extraction — it's the most reliable source for media.
     // __NEXT_DATA__ images may use unknown field names; DOM is authoritative.
     const media = extractMediaFromDOM();

@@ -1,0 +1,69 @@
+{
+    "_source": "inlineScript",
+    "_parsedAt": "2026-03-23T15:11:51.258Z",
+    "portal": "rightmove",
+    "listingId": "171587555",
+    "askingPrice": 215000,
+    "priceCurrency": "GBP",
+    "priceDisplay": "£215,000",
+    "propertyType": "Semi-Detached Bungalow",
+    "bedrooms": 2,
+    "bathrooms": 1,
+    "latitude": 50.423363,
+    "longitude": -3.585726,
+    "address": "Stapleton Close Roselands Paignton",
+    "postcode": null,
+    "description": "This elevated TWO BEDROOM SEMI DETACHED BUNGALOW which is for sale with NO ONWARD CHAIN enjoys open views across the surrounding area towards Marldon, while benefiting from a convenient location close to supermarkets, the ring road, and within a short drive of Paignton town centre. The position combines ease of access with a pleasant sense of outlook and privacy.\r<br />\r<br />Approached from road level, the property offers a single garage with parking directly to the front which has light and power providing practical storage and off-road convenience. A good-sized front garden, mainly laid to lawn with inset shrubs and plants, creates an attractive first impression. A winding pathway leads to the front entrance, with a further side path providing access around to the rear garden.\r<br />\r<br />Internally, the bungalow opens into an entrance porch fitted with meter cupboards and useful shelving, before leading through to the main living accommodation. The lounge–dining room is light and bright, enhanced by a full-height double-glazed window to the front which takes full advantage of the elevated position and far-reaching outlook. This is a comfortable and welcoming space, ideal for both relaxing and entertaining.\r<br />\r<br />Adjoining the living area is the fitted kitchen, which is well arranged with a range of light wood-effect wall and base cupboards, complemented by grey worktops and a stainless steel sink and drainer. Integrated appliances include a built-in electric oven, gas hob and cooker hood, with additional space provided for a fridge/freezer. A double-glazed window overlooks the side, while a rear door offers direct access outside, making it a practical layout for everyday living.\r<br />\r<br />An inner hallway leads to the two bedrooms, both of which are well proportioned. The front bedroom enjoys a pleasant outlook similar to the lounge, while the rear bedroom overlooks the garden. The accommodation is completed by a separate W.C. and a bathroom fitted with a white suite, comprising a bath with shower over and a pedestal wash basin. The walls are tiled, and there is a useful linen cupboard housing the Baxi combination boiler for central heating and hot water supply.\r<br />\r<br />To the rear, the garden is landscaped and arranged in terraced levels, creating a varied and interesting outdoor space with scope for planting, seating, or further enhancement. A garden shed is located at the top of the garden, providing additional storage.\r<br />\r<br />Overall, this well-located bungalow offers comfortable accommodation, attractive views, and excellent access to local amenities, making it an appealing home for a range of buyers seeking single-level living in a convenient Paignton location.",
+    "agent": "Eric Lloyd & Co, Paignton",
+    "tenure": "FREEHOLD",
+    "addedOrReduced": "Reduced on 21/03/2026",
+    "imageCount": 10,
+    "photos": [
+        {
+            "url": "https://media.rightmove.co.uk/property-photo/f65a2dcb8/171587555/f65a2dcb84e74399d8d272593101bcd9.jpeg",
+            "caption": "Photo 10"
+        },
+        {
+            "url": "https://media.rightmove.co.uk/property-photo/b0b46a441/171587555/b0b46a441370a5ef10a5a0175f43be6a.jpeg",
+            "caption": "Photo 9"
+        },
+        {
+            "url": "https://media.rightmove.co.uk/property-photo/e6d1d9d2e/171587555/e6d1d9d2ee18f92d0464f500d6c02c0c.jpeg",
+            "caption": "Photo 8"
+        },
+        {
+            "url": "https://media.rightmove.co.uk/property-photo/2d9c34a7e/171587555/2d9c34a7e8f71faec4881fcbc20e0f41.jpeg",
+            "caption": "Photo 6"
+        },
+        {
+            "url": "https://media.rightmove.co.uk/property-photo/5bda9b142/171587555/5bda9b1426cbd8502f3efca2f82f4441.jpeg",
+            "caption": "Photo 4"
+        },
+        {
+            "url": "https://media.rightmove.co.uk/property-photo/2d92d378b/171587555/2d92d378b1735a46ef1a392a97007d0f.jpeg",
+            "caption": "Photo 5"
+        },
+        {
+            "url": "https://media.rightmove.co.uk/property-photo/04e739f48/171587555/04e739f489735cefb8475a5705ef030a.jpeg",
+            "caption": "Photo 2"
+        },
+        {
+            "url": "https://media.rightmove.co.uk/property-photo/1f781ea89/171587555/1f781ea892a7d33e790d722a4fba4d5b.jpeg",
+            "caption": "Photo 3"
+        },
+        {
+            "url": "https://media.rightmove.co.uk/property-photo/86beb231f/171587555/86beb231f30efab67ac4eb60e2965909.jpeg",
+            "caption": "Photo 7"
+        },
+        {
+            "url": "https://media.rightmove.co.uk/property-photo/d765525c0/171587555/d765525c080462b652ca63e08452b04c.jpeg",
+            "caption": "Photo 1"
+        }
+    ],
+    "floorplans": [
+        {
+            "url": "https://media.rightmove.co.uk/property-floorplan/f5f65538c/171587555/f5f65538cf6b368c5c80011cab517665.jpeg",
+            "thumbnail": "https://media.rightmove.co.uk/property-floorplan/f5f65538c/171587555/f5f65538cf6b368c5c80011cab517665.jpeg"
+        }
+    ]
+}

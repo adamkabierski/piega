@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Piega</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      width: 280px;
+      background: #1A1816;
+      color: #FAF8F5;
+      font-family: Inter, system-ui, sans-serif;
+      font-size: 13px;
+    }
+
+    /* ── Header ─────────────────────────────────────── */
+    .header {
+      padding: 14px 16px 12px;
+      border-bottom: 1px solid rgba(184,169,154,0.12);
+      display: flex;
+      align-items: baseline;
+      gap: 8px;
+    }
+    .logo {
+      font-family: 'Bebas Neue', 'Inter', sans-serif;
+      font-size: 17px;
+      letter-spacing: 3px;
+      color: #FAF8F5;
+    }
+    .logo-dot { color: #C4775B; }
+    .tagline {
+      font-size: 10px;
+      color: #8A8580;
+      letter-spacing: 0.5px;
+    }
+
+    /* ── Listing card ────────────────────────────────── */
+    .listing-card {
+      padding: 14px 16px;
+      border-bottom: 1px solid rgba(184,169,154,0.12);
+      min-height: 68px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .listing-address {
+      font-size: 13px;
+      color: #FAF8F5;
+      line-height: 1.4;
+      font-weight: 500;
+    }
+    .listing-meta {
+      font-size: 11px;
+      color: #8A8580;
+    }
+    .listing-meta span { color: #B0A99F; }
+
+    .no-listing {
+      font-size: 12px;
+      color: #8A8580;
+      padding: 14px 16px;
+      line-height: 1.5;
+      border-bottom: 1px solid rgba(184,169,154,0.12);
+    }
+
+    /* ── Action area ─────────────────────────────────── */
+    .action {
+      padding: 14px 16px;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 10px;
+      border: none;
+      border-radius: 4px;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: opacity 0.15s;
+      letter-spacing: 0.3px;
+    }
+    .btn:hover { opacity: 0.85; }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .btn-primary {
+      background: #C4775B;
+      color: #FAF8F5;
+    }
+    .btn-secondary {
+      background: rgba(184,169,154,0.10);
+      color: #B0A99F;
+      border: 1px solid rgba(184,169,154,0.20);
+      margin-top: 8px;
+    }
+
+    /* ── Status message ─────────────────────────────── */
+    .status {
+      margin-top: 10px;
+      font-size: 11px;
+      color: #8A8580;
+      min-height: 16px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .dot-idle    { background: #8A8580; }
+    .dot-loading { background: #D4A882; animation: pulse 1s infinite; }
+    .dot-ok      { background: #7D8B75; }
+    .dot-error   { background: #C4775B; }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.35; }
+    }
+
+    /* ── Footer ─────────────────────────────────────── */
+    .footer {
+      padding: 8px 16px 10px;
+      border-top: 1px solid rgba(184,169,154,0.08);
+      font-size: 10px;
+      color: rgba(138,133,128,0.5);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <div class="header">
+    <span class="logo">PIEGA<span class="logo-dot">.</span></span>
+    <span class="tagline">property intelligence</span>
+  </div>
+
+  <!-- Listing info -->
+  <div id="listingArea"></div>
+
+  <!-- Action -->
+  <div class="action">
+    <button id="analyseBtn" class="btn btn-primary" disabled>Analyse Property</button>
+    <button id="openLastBtn" class="btn btn-secondary" style="display:none">Open Last Report ↗</button>
+    <div class="status" id="statusMsg">
+      <span class="status-dot dot-idle" id="statusDot"></span>
+      <span id="statusText">Loading…</span>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">Navigate to a Rightmove listing to parse it.</div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

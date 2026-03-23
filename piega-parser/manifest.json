@@ -1,14 +1,23 @@
 {
   "manifest_version": 3,
   "name": "Piega Parser",
-  "version": "0.1.0",
-  "description": "Silent property data parser — extracts listing data from portal pages and stores it locally. No UI.",
+  "version": "0.2.0",
+  "description": "Property data parser — extracts listing data from Rightmove and sends it for AI analysis.",
+
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Piega — Analyse Property"
+  },
 
   "background": {
     "service_worker": "background.js"
   },
 
-  "permissions": ["storage"],
+  "permissions": ["storage", "tabs"],
+
+  "host_permissions": [
+    "http://localhost:3001/*"
+  ],
 
   "content_scripts": [
     {

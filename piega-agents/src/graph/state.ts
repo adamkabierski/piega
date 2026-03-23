@@ -36,6 +36,12 @@ export const ReportState = Annotation.Root({
   // INPUT CHANNELS (populated before graph execution)
   // ─────────────────────────────────────────────────────────────────────────
 
+  /** Supabase report row ID — when set, agents write results to DB */
+  reportId: Annotation<string | null>({
+    reducer: (_, newVal) => newVal,
+    default: () => null,
+  }),
+
   /** The parsed listing from the Chrome extension */
   listing: Annotation<ParsedListing | null>({
     reducer: (_, newVal) => newVal,

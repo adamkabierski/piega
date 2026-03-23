@@ -15,6 +15,7 @@ import { StateGraph, START, END } from "@langchain/langgraph";
 
 import { ReportState, type ReportStateType } from "./state.js";
 import { runClassifier } from "../agents/classifier.js";
+import { mergeAgentResult, updateReportStatus, appendReportError } from "../db/index.js";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // NODE FUNCTIONS
@@ -28,19 +29,21 @@ async function classifierNode(state: ReportStateType): Promise<Partial<ReportSta
   console.log("[graph] Running classifier node...");
 
   if (!state.listing) {
-    return {
-      errors: ["Classifier: No listing provided"],
-      currentStep: "classifier_error",
-    };
+    const err = "Classifier: No listing provided";
+    if (state.reportId) await appendReportError(state.reportId, err).catch(console.error);
+    return { errors: [err], currentStep: "classifier_error" };
   }
 
   const result = await runClassifier({ listing: state.listing });
 
   if (result.error) {
-    return {
-      errors: [result.error],
-      currentStep: "classifier_error",
-    };
+    if (state.reportId) await appendReportError(state.reportId, result.error).catch(console.error);
+    return { errors: [result.error], currentStep: "classifier_error" };
+  }
+
+  // Write to Supabase
+  if (state.reportId && result.classification) {
+    await mergeAgentResult(state.reportId, "classification", result.classification).catch(console.error);
   }
 
   return {
@@ -126,6 +129,11 @@ async function mediaGeneratorNode(state: ReportStateType): Promise<Partial<Repor
 async function narrativeWriterNode(state: ReportStateType): Promise<Partial<ReportStateType>> {
   console.log("[graph] Running narrative writer node (stub)...");
 
+  // Mark report complete in Supabase
+  if (state.reportId) {
+    await updateReportStatus(state.reportId, "complete").catch(console.error);
+  }
+
   // Stub: return null for now
   return {
     narrative: null,
@@ -209,13 +217,20 @@ export async function generateReport(input: {
   listing: ReportStateType["listing"];
   enrichedArea?: ReportStateType["enrichedArea"];
   purpose?: ReportStateType["purpose"];
+  reportId?: string;
 }): Promise<ReportStateType> {
   const graph = buildReportGraph();
+
+  // Mark running in Supabase
+  if (input.reportId) {
+    await updateReportStatus(input.reportId, "running").catch(console.error);
+  }
 
   const result = await graph.invoke({
     listing: input.listing,
     enrichedArea: input.enrichedArea ?? null,
     purpose: input.purpose ?? "live_in",
+    reportId: input.reportId ?? null,
   });
 
   return result;

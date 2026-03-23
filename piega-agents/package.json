@@ -8,15 +8,21 @@
     "test:watch": "vitest",
     "test:classifier": "vitest run test/agents/classifier.test.ts",
     "eval:classifier": "tsx eval/run.ts classifier",
-    "dev": "tsx watch src/server.ts"
+    "dev": "tsx watch src/server.ts",
+    "smoke": "tsx test/smoke.ts"
   },
   "dependencies": {
     "@langchain/anthropic": "^0.3.0",
     "@langchain/core": "^0.3.0",
     "@langchain/langgraph": "^0.2.0",
+    "@supabase/supabase-js": "^2.100.0",
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
     "zod": "^3.23.0"
   },
   "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
     "@types/node": "^22.0.0",
     "dotenv": "^17.3.1",
     "langsmith": "^0.2.0",

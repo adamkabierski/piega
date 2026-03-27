@@ -39,8 +39,8 @@ const ImageSelectionSchema = z.object({
   use: z.boolean(),
   type: z.enum(["exterior", "interior"]),
   reason: z.string(),
-  promptGuidance: z.string(),
-  transformationIntensity: z.enum(["heavy", "moderate", "light"]),
+  promptGuidance: z.string().default(""),
+  transformationIntensity: z.enum(["heavy", "moderate", "light"]).default("light"),
 });
 
 const DesignBriefSchema = z.object({
@@ -79,6 +79,129 @@ export interface DesignBriefInput {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// RESPONSE NORMALISATION
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * LLMs sometimes return variations of the expected schema.
+ * This function normalises common mismatches before Zod validation.
+ */
+function normaliseDesignBrief(raw: Record<string, unknown>): Record<string, unknown> {
+  const obj = { ...raw };
+
+  // --- Strategy field aliases ---
+  if (!obj.transformationStrategy && obj.strategy) {
+    obj.transformationStrategy = obj.strategy;
+    delete obj.strategy;
+  }
+  if (!obj.transformationStrategy && obj.transformation_strategy) {
+    obj.transformationStrategy = obj.transformation_strategy;
+    delete obj.transformation_strategy;
+  }
+  if (!obj.strategyRationale && obj.rationale) {
+    obj.strategyRationale = obj.rationale;
+    delete obj.rationale;
+  }
+  if (!obj.strategyRationale && obj.strategy_rationale) {
+    obj.strategyRationale = obj.strategy_rationale;
+    delete obj.strategy_rationale;
+  }
+
+  // --- Design language ---
+  const dl = obj.designLanguage ?? obj.design_language;
+  if (dl && typeof dl === "object") {
+    const dlObj = { ...(dl as Record<string, unknown>) };
+
+    // Convert comma-separated strings to arrays
+    for (const key of ["palette", "materials", "avoidList", "avoid_list"] as const) {
+      if (typeof dlObj[key] === "string") {
+        dlObj[key] = (dlObj[key] as string).split(/,\s*/).map(s => s.trim()).filter(Boolean);
+      }
+    }
+
+    // Snake_case → camelCase aliases
+    if (!dlObj.eraGuidance && dlObj.era_guidance) {
+      dlObj.eraGuidance = dlObj.era_guidance;
+      delete dlObj.era_guidance;
+    }
+    if (!dlObj.avoidList && dlObj.avoid_list) {
+      dlObj.avoidList = dlObj.avoid_list;
+      delete dlObj.avoid_list;
+    }
+    if (!dlObj.avoidList && dlObj.avoid) {
+      dlObj.avoidList = Array.isArray(dlObj.avoid) ? dlObj.avoid : [];
+      delete dlObj.avoid;
+    }
+
+    obj.designLanguage = dlObj;
+    if (obj.design_language) delete obj.design_language;
+  }
+
+  // --- Image selections ---
+  const selections = obj.imageSelections ?? obj.image_selections ?? obj.images;
+  if (Array.isArray(selections)) {
+    obj.imageSelections = selections.map((sel: Record<string, unknown>) => {
+      const s = { ...sel };
+
+      // Snake_case aliases
+      if (s.prompt_guidance !== undefined && s.promptGuidance === undefined) {
+        s.promptGuidance = s.prompt_guidance;
+        delete s.prompt_guidance;
+      }
+      if (s.transformation_intensity !== undefined && s.transformationIntensity === undefined) {
+        s.transformationIntensity = s.transformation_intensity;
+        delete s.transformation_intensity;
+      }
+
+      // Default promptGuidance for skipped images
+      if (s.use === false && !s.promptGuidance) {
+        s.promptGuidance = "";
+      }
+      // Default transformationIntensity for skipped images
+      if (s.use === false && !s.transformationIntensity) {
+        s.transformationIntensity = "light";
+      }
+
+      // If 'selected' used instead of 'use'
+      if (s.use === undefined && s.selected !== undefined) {
+        s.use = s.selected;
+        delete s.selected;
+      }
+
+      return s;
+    });
+    if (obj.image_selections) delete obj.image_selections;
+    if (obj.images) delete obj.images;
+  }
+
+  // --- Recommended count ---
+  if (!obj.recommendedCount && obj.recommended_count) {
+    obj.recommendedCount = obj.recommended_count;
+    delete obj.recommended_count;
+  }
+  if (!obj.recommendedCount && obj.imageSelections) {
+    // Auto-compute from selections if missing
+    const sels = obj.imageSelections as Array<{ use?: boolean; type?: string }>;
+    const used = sels.filter(s => s.use);
+    const ext = used.filter(s => s.type === "exterior").length;
+    const int = used.filter(s => s.type === "interior").length;
+    obj.recommendedCount = { exteriors: ext, interiors: int, total: ext + int };
+  }
+
+  // --- Concept statement ---
+  if (!obj.conceptStatement && obj.concept_statement) {
+    obj.conceptStatement = obj.concept_statement;
+    delete obj.concept_statement;
+  }
+  if (!obj.conceptStatement && obj.concept) {
+    obj.conceptStatement = obj.concept;
+    delete obj.concept;
+  }
+
+  return obj;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // AGENT FUNCTION
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -113,7 +236,7 @@ export async function runDesignBrief(
   });
 
   // Single Claude call
-  const model = createTextModel({ temperature: 0.4, maxTokens: 2048 });
+  const model = createTextModel({ temperature: 0.4, maxTokens: 4096 });
   const startTime = Date.now();
 
   const response = await model.invoke([
@@ -130,7 +253,10 @@ export async function runDesignBrief(
       ? response.content
       : JSON.stringify(response.content);
 
-  const brief = parseStructuredOutput(responseText, DesignBriefSchema);
+  // Log raw response for debugging
+  console.log(`[design-brief] Raw response (first 500 chars): ${responseText.slice(0, 500)}`);
+
+  const brief = parseStructuredOutput(responseText, DesignBriefSchema, normaliseDesignBrief) as unknown as DesignBriefResult;
 
   // Log summary
   const selected = brief.imageSelections.filter((s) => s.use);

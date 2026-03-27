@@ -65,7 +65,37 @@ You must produce a structured design brief that answers four questions:
 
 Finally, write a CONCEPT STATEMENT — 3-4 sentences describing the renovation vision in plain English. This is for the report narrative, not for the image model. It should make a buyer or agent think "yes, I can see that."
 
-RESPOND WITH VALID JSON matching the DesignBrief schema. No markdown, no explanation, just the JSON.`;
+RESPOND WITH VALID JSON matching this exact structure. No markdown, no explanation, just the JSON object.
+
+{
+  "transformationStrategy": "full_renovation" | "refresh" | "staging" | "minimal" | "exterior_focus",
+  "strategyRationale": "2-3 sentences explaining why this strategy",
+  "designLanguage": {
+    "palette": ["colour name 1", "colour name 2", "colour name 3"],
+    "materials": ["material 1", "material 2", "material 3"],
+    "mood": "single sentence describing the mood",
+    "eraGuidance": "what to respect and what to update for this era",
+    "avoidList": ["thing to avoid 1", "thing to avoid 2"]
+  },
+  "imageSelections": [
+    {
+      "index": 0,
+      "use": true,
+      "type": "exterior" | "interior",
+      "reason": "why selected or skipped",
+      "promptGuidance": "specific notes for this image's renovation prompt",
+      "transformationIntensity": "heavy" | "moderate" | "light"
+    }
+  ],
+  "recommendedCount": {
+    "exteriors": 2,
+    "interiors": 1,
+    "total": 3
+  },
+  "conceptStatement": "3-4 sentences describing the renovation vision"
+}
+
+IMPORTANT: palette, materials, and avoidList MUST be JSON arrays of strings, not comma-separated strings. Every image from the classified list must appear in imageSelections with ALL fields present.`;
 
 // ═══════════════════════════════════════════════════════════════════════════
 // USER PROMPT BUILDER

@@ -25,11 +25,21 @@ export function extractJson(text: string): string {
 }
 
 /**
- * Parse LLM output as JSON and validate against a Zod schema
+ * Parse LLM output as JSON and validate against a Zod schema.
+ * An optional `normalise` function can pre-process the parsed object
+ * before validation — useful for handling LLM output variations
+ * (snake_case keys, comma-separated strings instead of arrays, etc.).
  */
-export function parseStructuredOutput<T>(text: string, schema: ZodSchema<T>): T {
+export function parseStructuredOutput<T>(
+  text: string,
+  schema: ZodSchema<T>,
+  normalise?: (raw: Record<string, unknown>) => Record<string, unknown>,
+): T {
   const jsonStr = extractJson(text);
-  const parsed = JSON.parse(jsonStr);
+  let parsed = JSON.parse(jsonStr);
+  if (normalise && typeof parsed === "object" && parsed !== null) {
+    parsed = normalise(parsed);
+  }
   return schema.parse(parsed);
 }
 

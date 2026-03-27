@@ -52,26 +52,29 @@ function ensureConfigured(): void {
 /**
  * Generate a renovated image using Nano Banana via fal.ai
  *
- * @param imageUrl  - URL of the original property photo
+ * @param imageUrl  - URL(s) of the input image(s). Pass a single string for
+ *                    standard editing, or an array for multi-image context
+ *                    (e.g. original + generated for post-production).
  * @param prompt    - Claude-crafted renovation prompt
  * @param model     - Which Nano Banana model to use
  */
 export async function generateRenovatedImage(
-  imageUrl: string,
+  imageUrl: string | string[],
   prompt: string,
   model: ImageModel = "nano-banana-pro",
 ): Promise<FalEditResult> {
   ensureConfigured();
 
   const endpoint = MODEL_ENDPOINTS[model];
-  console.log(`[fal] Generating with ${model} — ${prompt.slice(0, 80)}…`);
+  const imageUrls = Array.isArray(imageUrl) ? imageUrl : [imageUrl];
+  console.log(`[fal] Generating with ${model} (${imageUrls.length} input(s)) — ${prompt.slice(0, 80)}…`);
 
   const start = Date.now();
 
   const result = await fal.subscribe(endpoint, {
     input: {
       prompt,
-      image_urls: [imageUrl],
+      image_urls: imageUrls,
       num_images: 1,
       output_format: "jpeg",
       aspect_ratio: "auto",

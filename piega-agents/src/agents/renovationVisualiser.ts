@@ -23,6 +23,7 @@ import {
   BRIEF_GUIDED_SYSTEM_PROMPT,
   buildBriefGuidedUserPrompt,
 } from "../prompts/renovationVisualiser.js";
+import { postProcessImage } from "./postProduction.js";
 
 import type {
   ClassificationResult,
@@ -40,6 +41,7 @@ export interface RenovationVisualiserConfig {
   model: ImageModel;
   maxExteriors: number;
   maxInteriors: number;
+  enablePostProduction: boolean;
 }
 
 export interface VisualisationRequest {
@@ -83,6 +85,7 @@ const DEFAULT_CONFIG: RenovationVisualiserConfig = {
   model: (process.env.VISUALISER_MODEL as ImageModel) ?? "nano-banana-pro",
   maxExteriors: 3,
   maxInteriors: 2,
+  enablePostProduction: process.env.POST_PRODUCTION !== "false",
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -271,6 +274,7 @@ export async function craftRenovationPrompt(
 async function processOneImage(
   req: VisualisationRequest,
   model: ImageModel,
+  enablePostProduction: boolean = true,
 ): Promise<VisualisationResult> {
   // Step 1: Claude crafts the prompt
   const prompt = await craftRenovationPrompt(req);
@@ -281,10 +285,31 @@ async function processOneImage(
   // Step 3: Nano Banana generates the renovation
   const generated = await generateRenovatedImage(accessibleUrl, prompt, model);
 
+  // Step 4: Post-production — polish to architectural photography standard
+  let finalUrl = generated.url;
+  if (enablePostProduction) {
+    try {
+      const isExterior = req.type === "exterior";
+      const polished = await postProcessImage(
+        generated.url,
+        isExterior,
+        model,
+      );
+      finalUrl = polished.url;
+      console.log(`[visualiser] Post-production applied for ${req.depicts}`);
+    } catch (err) {
+      console.error(
+        `[visualiser] Post-production failed for ${req.depicts}, using unprocessed image:`,
+        err instanceof Error ? err.message : err,
+      );
+      // Fall back to the raw generated image
+    }
+  }
+
   return {
     imageIndex: req.imageIndex,
     originalUrl: req.imageUrl,
-    renovatedUrl: generated.url,
+    renovatedUrl: finalUrl,
     depicts: req.depicts,
     room: req.room,
     type: req.type,
@@ -316,7 +341,7 @@ export async function runRenovationVisualiser(
   const startTime = Date.now();
 
   const hasBrief = !!designBrief;
-  console.log(`[visualiser] Starting — model: ${cfg.model}, brief: ${hasBrief ? "yes" : "no"}`);
+  console.log(`[visualiser] Starting — model: ${cfg.model}, brief: ${hasBrief ? "yes" : "no"}, post-production: ${cfg.enablePostProduction ? "on" : "off"}`);
 
   // 1. Select images — from brief when available, else fallback to hardcoded rules
   let allRequests: VisualisationRequest[];
@@ -413,7 +438,7 @@ export async function runRenovationVisualiser(
 
   for (const req of allRequests) {
     try {
-      const result = await processOneImage(req, cfg.model);
+      const result = await processOneImage(req, cfg.model, cfg.enablePostProduction);
       results.push(result);
       remaining--;
       onImageComplete?.(result, remaining);
@@ -434,10 +459,12 @@ export async function runRenovationVisualiser(
   const exteriors = results.filter((r) => r.type === "exterior");
   const interiors = results.filter((r) => r.type === "interior");
 
+  // Post-production doubles the Nano Banana cost per image
+  const costMultiplier = cfg.enablePostProduction ? 2 : 1;
   const output: RenovationVisualisationOutput = {
     exteriors,
     interiors,
-    totalCost: results.length * MODEL_COSTS[cfg.model],
+    totalCost: results.length * MODEL_COSTS[cfg.model] * costMultiplier,
     totalDurationMs: Date.now() - startTime,
     model: cfg.model,
   };

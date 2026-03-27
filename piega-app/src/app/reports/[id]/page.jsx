@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { C } from "@/lib/theme";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
-const AGENTS_URL = "http://localhost:3001";
+const AGENTS_URL = "http://localhost:4711";
 const POLL_INTERVAL_MS = 3000;
 
 // ─── Tiny utility components ─────────────────────────────────────────────────

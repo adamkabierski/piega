@@ -41,6 +41,49 @@ export interface ImageClassification {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// DESIGN BRIEF
+// ═══════════════════════════════════════════════════════════════════════════
+
+export type TransformationStrategy =
+  | "full_renovation" // stripped/derelict → complete rethink
+  | "refresh" // dated but liveable → new surfaces, same bones
+  | "staging" // already decent → furniture, styling, lifestyle
+  | "minimal" // already good → 1-2 subtle tweaks or nothing
+  | "exterior_focus"; // interiors too poor to transform, lean on outside
+
+export interface DesignBriefImageSelection {
+  index: number; // from classifier images array
+  use: boolean; // true = transform this, false = skip
+  type: "exterior" | "interior";
+  reason: string; // why selected or skipped
+  promptGuidance: string; // specific notes for this image's prompt
+  transformationIntensity: "heavy" | "moderate" | "light";
+}
+
+export interface DesignBriefResult {
+  transformationStrategy: TransformationStrategy;
+  strategyRationale: string; // 2-3 sentences explaining why this strategy
+
+  designLanguage: {
+    palette: string[]; // 3-5 named colours, e.g. ["slate grey", "raw linen", "aged brass"]
+    materials: string[]; // 3-5 materials, e.g. ["lime plaster", "engineered oak", "reclaimed stone"]
+    mood: string; // single sentence, e.g. "honest, warm, rooted in place"
+    eraGuidance: string; // what to respect/avoid for this era
+    avoidList: string[]; // explicit things NOT to do
+  };
+
+  imageSelections: DesignBriefImageSelection[];
+
+  recommendedCount: {
+    exteriors: number; // 0-3
+    interiors: number; // 0-2
+    total: number;
+  };
+
+  conceptStatement: string; // 3-4 sentences describing the renovation vision
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // BUILDING READER
 // ═══════════════════════════════════════════════════════════════════════════
 

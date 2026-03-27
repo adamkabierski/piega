@@ -20,9 +20,16 @@ import {
 import {
   RENOVATION_VISUALISER_SYSTEM_PROMPT,
   buildVisualiserUserPrompt,
+  BRIEF_GUIDED_SYSTEM_PROMPT,
+  buildBriefGuidedUserPrompt,
 } from "../prompts/renovationVisualiser.js";
 
-import type { ClassificationResult, ImageClassification } from "../types/agents.js";
+import type {
+  ClassificationResult,
+  ImageClassification,
+  DesignBriefResult,
+  DesignBriefImageSelection,
+} from "../types/agents.js";
 import type { ImageSubject } from "../types/common.js";
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -43,6 +50,10 @@ export interface VisualisationRequest {
   observations: string[];
   archetype: ClassificationResult["archetype"];
   type: "exterior" | "interior";
+  /** When present, prompt crafting follows the brief's design language */
+  designBrief?: DesignBriefResult;
+  /** Per-image guidance from the brief */
+  imageSelection?: DesignBriefImageSelection;
 }
 
 export interface VisualisationResult {
@@ -211,17 +222,35 @@ export async function craftRenovationPrompt(
 ): Promise<string> {
   const model = createTextModel({ temperature: 0.4, maxTokens: 512 });
 
-  const userMsg = buildVisualiserUserPrompt({
-    archetypeDisplayName: req.archetype.displayName,
-    archetypeEra: req.archetype.era,
-    constructionType: req.archetype.constructionType,
-    depicts: req.depicts,
-    room: req.room,
-    observations: req.observations,
-  });
+  // Use brief-guided prompting when a design brief is available
+  const hasBrief = req.designBrief && req.imageSelection;
+
+  const systemPrompt = hasBrief
+    ? BRIEF_GUIDED_SYSTEM_PROMPT
+    : RENOVATION_VISUALISER_SYSTEM_PROMPT;
+
+  const userMsg = hasBrief
+    ? buildBriefGuidedUserPrompt({
+        brief: req.designBrief!,
+        imageSelection: req.imageSelection!,
+        archetypeDisplayName: req.archetype.displayName,
+        archetypeEra: req.archetype.era,
+        constructionType: req.archetype.constructionType,
+        depicts: req.depicts,
+        room: req.room,
+        observations: req.observations,
+      })
+    : buildVisualiserUserPrompt({
+        archetypeDisplayName: req.archetype.displayName,
+        archetypeEra: req.archetype.era,
+        constructionType: req.archetype.constructionType,
+        depicts: req.depicts,
+        room: req.room,
+        observations: req.observations,
+      });
 
   const response = await model.invoke([
-    new SystemMessage(RENOVATION_VISUALISER_SYSTEM_PROMPT),
+    new SystemMessage(systemPrompt),
     new HumanMessage(userMsg),
   ]);
 
@@ -281,58 +310,104 @@ export async function runRenovationVisualiser(
   archetype: ClassificationResult["archetype"],
   config?: Partial<RenovationVisualiserConfig>,
   onImageComplete?: (result: VisualisationResult, remaining: number) => void,
+  designBrief?: DesignBriefResult,
 ): Promise<RenovationVisualisationOutput> {
   const cfg: RenovationVisualiserConfig = { ...DEFAULT_CONFIG, ...config };
   const startTime = Date.now();
 
-  console.log(`[visualiser] Starting — model: ${cfg.model}, max exteriors: ${cfg.maxExteriors}, max interiors: ${cfg.maxInteriors}`);
+  const hasBrief = !!designBrief;
+  console.log(`[visualiser] Starting — model: ${cfg.model}, brief: ${hasBrief ? "yes" : "no"}`);
 
-  // 1. Select images
-  const selected = selectImagesForVisualisation(classifiedImages, cfg);
-  const totalImages = selected.exteriors.length + selected.interiors.length;
+  // 1. Select images — from brief when available, else fallback to hardcoded rules
+  let allRequests: VisualisationRequest[];
 
-  console.log(
-    `[visualiser] Selected ${selected.exteriors.length} exterior(s) + ${selected.interiors.length} interior(s) = ${totalImages} images`,
-  );
+  if (designBrief) {
+    // Brief-driven selection: use only images the brief marked as use: true
+    const selectedByBrief = designBrief.imageSelections.filter((s) => s.use);
+    console.log(
+      `[visualiser] Brief selected ${selectedByBrief.length} images (strategy: ${designBrief.transformationStrategy})`,
+    );
 
-  if (totalImages === 0) {
-    console.warn("[visualiser] No suitable images for visualisation");
-    return {
-      exteriors: [],
-      interiors: [],
-      totalCost: 0,
-      totalDurationMs: Date.now() - startTime,
-      model: cfg.model,
-    };
+    if (selectedByBrief.length === 0) {
+      console.warn("[visualiser] Brief selected 0 images — nothing to generate");
+      return {
+        exteriors: [],
+        interiors: [],
+        totalCost: 0,
+        totalDurationMs: Date.now() - startTime,
+        model: cfg.model,
+      };
+    }
+
+    allRequests = selectedByBrief
+      .map((sel) => {
+        const img = classifiedImages.find((i) => i.index === sel.index);
+        if (!img) {
+          console.warn(`[visualiser] Brief references image index ${sel.index} not found in classified images — skipping`);
+          return null;
+        }
+        return {
+          imageIndex: img.index,
+          imageUrl: img.url,
+          depicts: img.classification.depicts,
+          room: img.classification.room,
+          observations: img.classification.observations,
+          archetype,
+          type: sel.type,
+          designBrief,
+          imageSelection: sel,
+        } as VisualisationRequest;
+      })
+      .filter((r): r is VisualisationRequest => r !== null);
+  } else {
+    // Legacy path: hardcoded selection rules
+    const selected = selectImagesForVisualisation(classifiedImages, cfg);
+    const totalSelected = selected.exteriors.length + selected.interiors.length;
+
+    console.log(
+      `[visualiser] Selected ${selected.exteriors.length} exterior(s) + ${selected.interiors.length} interior(s) = ${totalSelected} images`,
+    );
+
+    if (totalSelected === 0) {
+      console.warn("[visualiser] No suitable images for visualisation");
+      return {
+        exteriors: [],
+        interiors: [],
+        totalCost: 0,
+        totalDurationMs: Date.now() - startTime,
+        model: cfg.model,
+      };
+    }
+
+    allRequests = [
+      ...selected.exteriors.map(
+        (img): VisualisationRequest => ({
+          imageIndex: img.index,
+          imageUrl: img.url,
+          depicts: img.classification.depicts,
+          room: img.classification.room,
+          observations: img.classification.observations,
+          archetype,
+          type: "exterior",
+        }),
+      ),
+      ...selected.interiors.map(
+        (img): VisualisationRequest => ({
+          imageIndex: img.index,
+          imageUrl: img.url,
+          depicts: img.classification.depicts,
+          room: img.classification.room,
+          observations: img.classification.observations,
+          archetype,
+          type: "interior",
+        }),
+      ),
+    ];
   }
 
-  // 2. Build requests
-  const allRequests: VisualisationRequest[] = [
-    ...selected.exteriors.map(
-      (img): VisualisationRequest => ({
-        imageIndex: img.index,
-        imageUrl: img.url,
-        depicts: img.classification.depicts,
-        room: img.classification.room,
-        observations: img.classification.observations,
-        archetype,
-        type: "exterior",
-      }),
-    ),
-    ...selected.interiors.map(
-      (img): VisualisationRequest => ({
-        imageIndex: img.index,
-        imageUrl: img.url,
-        depicts: img.classification.depicts,
-        room: img.classification.room,
-        observations: img.classification.observations,
-        archetype,
-        type: "interior",
-      }),
-    ),
-  ];
+  const totalImages = allRequests.length;
 
-  // 3. Process images (serially to avoid rate limits and for progressive updates)
+  // 2. Process images (serially to avoid rate limits and for progressive updates)
   const results: VisualisationResult[] = [];
   let remaining = allRequests.length;
 
@@ -355,7 +430,7 @@ export async function runRenovationVisualiser(
     }
   }
 
-  // 4. Split results
+  // 3. Split results
   const exteriors = results.filter((r) => r.type === "exterior");
   const interiors = results.filter((r) => r.type === "interior");
 

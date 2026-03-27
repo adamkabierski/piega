@@ -53,7 +53,7 @@ function Skeleton({ height = 20, width = "100%", style }) {
   );
 }
 
-export default function VisualiserIndexPage() {
+export default function DesignBriefIndexPage() {
   const router = useRouter();
   const [reports, setReports] = useState(null);
   const [error, setError] = useState(null);
@@ -92,7 +92,7 @@ export default function VisualiserIndexPage() {
               fontSize: 11, color: C.warmGrey, letterSpacing: 0.5,
               paddingLeft: 8, borderLeft: `1px solid ${C.bd}`,
             }}>
-              Renovation Visualiser
+              Design Brief
             </span>
           </div>
 
@@ -106,7 +106,7 @@ export default function VisualiserIndexPage() {
               Pick a classified report
             </h1>
             <p style={{ fontSize: 13, color: C.warmGrey, margin: 0, lineHeight: 1.6 }}>
-              Select a property below to generate renovation visualisations.
+              Select a property below to generate a design brief.
               The classifier must have run first.
             </p>
           </div>
@@ -152,12 +152,12 @@ export default function VisualiserIndexPage() {
                   const price = listing.askingPrice
                     ? `£${Number(listing.askingPrice).toLocaleString("en-GB")}`
                     : null;
-                  const hasVis = !!r.results?.renovation_visualisation;
+                  const hasBrief = !!r.results?.design_brief;
 
                   return (
                     <div
                       key={r.id}
-                      onClick={() => router.push(`/visualiser/${r.id}`)}
+                      onClick={() => router.push(`/design-brief/${r.id}`)}
                       style={{
                         background: C.darkCard,
                         border: `1px solid ${C.bd}`,
@@ -185,8 +185,8 @@ export default function VisualiserIndexPage() {
                           </div>
                         </div>
                         <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 5, flexShrink: 0 }}>
-                          {hasVis
-                            ? <Badge color={C.sage}>Visualised ↗</Badge>
+                          {hasBrief
+                            ? <Badge color={C.sage}>Brief ready ↗</Badge>
                             : <Badge color={C.warmGrey}>Ready</Badge>
                           }
                           <span style={{ fontSize: 9, color: C.warmGrey + "88" }}>

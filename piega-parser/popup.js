@@ -9,8 +9,8 @@
 
 'use strict';
 
-const AGENTS_URL = 'http://localhost:3001';
-const APP_URL    = 'http://localhost:3000';
+const AGENTS_URL = 'http://localhost:4711';
+const APP_URL    = 'http://localhost:4712';
 const STORAGE_KEY_LAST_REPORT = 'piega:lastReport';
 
 // ── DOM refs ──────────────────────────────────────────────────────────────

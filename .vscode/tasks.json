@@ -1,0 +1,37 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Start piega-agents",
+			"type": "shell",
+			"command": "pnpm dev",
+			"options": {
+				"cwd": "${workspaceFolder}/piega-agents",
+				"env": {
+					"PORT": "4711"
+				}
+			},
+			"isBackground": true,
+			"problemMatcher": []
+		},
+		{
+			"label": "Start piega-app",
+			"type": "shell",
+			"command": "npm run dev -- --port 4712",
+			"options": {
+				"cwd": "${workspaceFolder}/piega-app"
+			},
+			"isBackground": true,
+			"problemMatcher": []
+		},
+		{
+			"label": "Start All",
+			"dependsOn": ["Start piega-agents", "Start piega-app"],
+			"dependsOrder": "parallel",
+			"problemMatcher": [],
+			"runOptions": {
+				"runOn": "folderOpen"
+			}
+		}
+	]
+}

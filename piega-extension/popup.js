@@ -6,7 +6,7 @@
 
 'use strict';
 
-const BACKEND = 'http://localhost:3001/api/area-intelligence';
+const BACKEND = 'http://localhost:4711/api/area-intelligence';
 
 /* ═══════════════════════════════════════════════════════════════
  * UI helpers

@@ -30,21 +30,84 @@ You must produce a structured design brief that answers four questions:
    - "exterior_focus" — interior photos are too poor quality to work with, focus on outside only
 
 2. WHAT IS THE DESIGN LANGUAGE?
-   Create a unified palette, material set, and mood that will apply to EVERY image. This must be:
-   - Rooted in the building's era and construction type (a Victorian terrace ≠ a 1960s bungalow)
-   - Specific enough to follow (name actual colours and materials, not "modern finishes")
-   - Realistic for a modest-to-medium budget (no marble, no luxury brands, no fantasy)
-   - Opinionated — have a point of view. "Warm white walls" is generic. "Lime plaster left deliberately imperfect, catching south light" has character.
+   Create a unified palette, material set, and mood. This is the most important part of the brief.
    
-   Also include an avoidList — things that would undermine the design:
-   - Generic: "no grey crushed velvet, no chrome spotlights, no feature wall wallpaper from B&Q"
-   - Era-specific: for a Victorian, "no flush modern doors, no LED strip lighting, no open plan where it wouldn't have existed"
+   DESIGN VOCABULARY BY ERA — use these as starting points, not rigid rules:
+   
+   Victorian terrace / villa:
+     Palette: muted heritage tones — Farrow & Ball Pointing, Elephant's Breath, Hague Blue, Setting Plaster
+     Materials: stripped and waxed floorboards, encaustic hall tiles, cast iron radiators, lime plaster, original fireplaces
+     Joinery: traditional timber, raised and fielded panelling, sash windows respected
+     Avoid: flush modern doors, LED strips, open plan where it didn't exist, composite front doors, chrome spotlights
+   
+   Edwardian semi / detached:
+     Palette: warm whites, muted greens, heritage reds, stained timber
+     Materials: parquet or herringbone oak, geometric floor tiles in hallways, picture rails kept and used
+     Character: generous proportions celebrated, Arts & Crafts-influenced joinery, stained glass preserved
+     Avoid: blocking up original doorways, removing ceiling roses, grey everything
+   
+   Interwar semi / detached:
+     Palette: cream, sage, brick red accents, timber tones
+     Materials: terrazzo or geometric tiles in halls, simple plaster coving, Crittal-style glazing where existing
+     Character: warm, unfussy, middle-England domesticity done well
+     Avoid: trying to make it look Victorian or ultra-modern, removing original curved bay windows
+   
+   1960s–70s house / bungalow:
+     Palette: warm whites, teak/walnut tones, ochre, olive
+     Materials: cork or polished concrete floors, teak or walnut joinery, plain white walls
+     Character: honest mid-century approach, original features like room dividers or internal glazing celebrated
+     Avoid: pretending it's a period property, adding fake period features, covering everything in grey
+   
+   Georgian / Regency:
+     Palette: off-whites, stone, muted blue-green, traditional distemper tones
+     Materials: lime plaster, wide-board timber or stone floors, shuttered sash windows
+     Character: restrained elegance, proportion is everything, minimal furniture, let the architecture breathe
+     Avoid: modern spotlights, bold accent walls, anything that competes with the proportions
+   
+   Period cottage:
+     Palette: lime white, stone, earthy red, dark oak
+     Materials: exposed beams (NOT sandblasted bright), lime plaster, flagstone or quarry tiles
+     Character: low ceilings celebrated not fought, Aga/range position respected, honest and rural
+     Avoid: barn conversion clichés (spotlights on beams), bijou-ing it up, fake rustic
+   
+   New build:
+     Palette: warm neutrals, natural wood tones
+     Materials: timber instead of laminate, linen instead of polyester, ceramic instead of plastic
+     Character: honest about what it is, warm it up with better materials, don't try to fake character
+     Avoid: developer-spec everything, chrome and glass, feature walls
+
+   RULES FOR DESIGN LANGUAGE:
+   - Be SPECIFIC: name actual colours and materials, not "modern finishes" or "neutral tones"
+   - Palette must be 3-5 named colours (e.g. "Farrow & Ball Pointing", "aged brass", "oiled oak")
+   - Materials must be 3-5 real materials (e.g. "reclaimed parquet", "unlacquered brass", "lime plaster")
+   - Mood must be a single evocative sentence, not a list of adjectives
+   - Budget: modest to medium. Farrow & Ball paint yes, marble countertops no.
+   - Aesthetic reference: The Modern House listings, Retrouvius material honesty, George Clarke's "Old House New Home" sensibility
+   
+   UNIVERSAL AVOID LIST (add era-specific items too):
+   - Grey everything (grey kitchen, grey carpet, grey sofa)
+   - Crushed velvet anything
+   - Chrome spotlights or LED strip lighting in period properties
+   - Open plan where the building wasn't designed for it
+   - Over-landscaped front gardens (gravel parking, decking, architectural planting)
+   - Removing original features and replacing with modern substitutes
+   - Bi-fold doors on Victorian terraces
+   - Feature wall wallpaper
+   - Anything that makes the building look like a different building
 
 3. WHICH IMAGES SHOULD WE TRANSFORM?
    For each classified image, decide:
    - use: true/false
    - If true: what the prompt should emphasise (what to change, what to preserve, how hard to push)
    - If false: why (too dark, duplicate angle, room doesn't need transformation, etc.)
+   
+   CRITICAL — SPATIAL HONESTY:
+   The renovation visualiser edits existing photos. The edited image must show the SAME space.
+   In your promptGuidance for each image, ALWAYS specify:
+   - What structural elements MUST be preserved (room shape, window positions, ceiling height, building footprint)
+   - What surfaces/finishes to change
+   - What to ADD (furniture, fixtures) vs what to REPLACE (flooring, paint, kitchen units)
+   - Never suggest changes that would alter the room's size or the building's shape
    
    Rules:
    - Never transform usefulness: "low" images
@@ -63,7 +126,7 @@ You must produce a structured design brief that answers four questions:
    - Tier 4 boring box: 2-3 exterior + 0-1 interior = 2-3
    - Bad photo quality across the board: reduce count to what's actually usable
 
-Finally, write a CONCEPT STATEMENT — 3-4 sentences describing the renovation vision in plain English. This is for the report narrative, not for the image model. It should make a buyer or agent think "yes, I can see that."
+Finally, write a CONCEPT STATEMENT — 3-4 sentences describing the renovation vision in plain English. This is for the report narrative, not for the image model. It should read like a paragraph from a good estate agent's brochure after renovation, or a sentence Kevin McCloud would say on Grand Designs: "This is a house that deserves to have its original character revealed, not covered up."
 
 RESPOND WITH VALID JSON matching this exact structure. No markdown, no explanation, just the JSON object.
 

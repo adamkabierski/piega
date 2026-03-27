@@ -245,13 +245,13 @@ results.renovation_visualisation = { exteriors[], interiors[], cost, model }
 
 ### Known limitations
 
-The current visualiser has four structural problems that affect output quality.
+The visualiser has four structural challenges. The Design Brief (Step 3) addresses the first two directly.
 
-**1. No design coherence across images**
-Each image is prompted independently. The kitchen, living room, and exterior each get a separate Claude prompt with no shared palette, no consistent material language, no unifying concept. The result is a set of individually tweaked photos that don't read as a single renovation. There is no through-line of colour, material, or character.
+**1. No design coherence across images** ✅ *Addressed by Design Brief*
+Each image is prompted independently in standalone mode. The Design Brief solves this by providing a shared palette, materials, mood, and per-image guidance — every prompt is constrained by the same design language.
 
-**2. Prompts lack lift**
-The editing prompts are technically correct but aesthetically safe. They describe mid-range materials and sensible interventions but don't reach for a point of view. A good renovation has an opinion — a colour that commits, a material that earns its place. The current prompts produce results that look slightly improved rather than genuinely transformed.
+**2. Prompts lack lift** ✅ *Addressed by Design Brief*
+Standalone prompts are technically correct but aesthetically safe. The Design Brief provides an opinionated concept statement, specific material choices, and transformation intensity per image — giving the prompt writer a real point of view to follow.
 
 **3. Camera angle is inherited, not corrected**
 The visualiser works with whatever photos the estate agent took. If the living room was photographed from a dark corner with a wide-angle lens, the renovated version is still shot from that same dark corner. The composition problem is baked in before the model touches it. A beautifully renovated space can still look underwhelming if the angle was bad to begin with.

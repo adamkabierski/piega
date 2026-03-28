@@ -303,11 +303,47 @@ export interface MediaResult {
 // NARRATIVE WRITER
 // ═══════════════════════════════════════════════════════════════════════════
 
+export interface NarrativeWriterInput {
+  // From Classifier
+  summary: string;
+  archetype: ClassificationResult["archetype"];
+  architecturalReading: ArchitecturalReading;
+
+  // From Design Brief
+  transformationStrategy: TransformationStrategy;
+  conceptStatement: string;
+  strategyRationale: string;
+
+  // From Cost Estimator
+  totalEnvelope: CostEstimateResult["totalEnvelope"];
+  priceGap: CostEstimateResult["priceGap"];
+  phasedBudget: CostEstimateResult["phasedBudget"];
+  costDrivers: CostEstimateResult["costDrivers"];
+  confidenceStatement: string;
+
+  // From Visualiser (optional — report works without it)
+  imageCount: { exteriors: number; interiors: number };
+  hasVisualisation: boolean;
+
+  // Context
+  address: string;
+  askingPrice: number;
+  priceDisplay: string;
+  propertyType: string;
+  bedrooms: number;
+}
+
 export interface NarrativeResult {
-  openingVerse: string;
-  placeNarrative: string;
-  buildingNarrative: string;
-  honestVerse: string;
-  reckoningNarrative: string;
-  finalVerse: string;
+  /** The first thing the reader sees — one or two provocative sentences. */
+  openingHook: string;
+  /** 1–2 sentences bridging the hook to the architectural reading chapter. */
+  buildingReadingTransition: string;
+  /** 2–3 paragraphs synthesising issues + unknowns as prose, not bullets. */
+  honestLayerNarrative: string;
+  /** 1–2 sentences connecting the renovation vision to the cost reality. */
+  numbersTransition: string;
+  /** 2–3 sentences framing the price gap in human terms. */
+  valueGapNarrative: string;
+  /** 2–3 sentences — what the reader should do next. */
+  closingStatement: string;
 }

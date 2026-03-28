@@ -6,6 +6,8 @@
  *   GET  /reports/:id                — Get a report by ID (polling fallback)
  *   POST /reports/:id/design-brief   — Run design brief on existing classified report
  *   POST /reports/:id/visualise      — Run renovation visualiser on existing report
+ *   POST /reports/:id/cost-estimate  — Run cost estimator on existing report
+ *   POST /reports/:id/narrative      — Run narrative writer on existing report
  *   GET  /health                     — Health check
  *
  * The pipeline writes results progressively to Supabase.
@@ -21,6 +23,7 @@ import { generateReport } from "./graph/index.js";
 import { runRenovationVisualiser } from "./agents/renovationVisualiser.js";
 import { runDesignBrief } from "./agents/designBrief.js";
 import { runCostEstimator } from "./agents/costEstimator.js";
+import { runNarrativeWriter } from "./agents/narrativeWriter.js";
 import type { ParsedListing } from "./types/listing.js";
 import type { BuyerPurpose } from "./types/common.js";
 import type {
@@ -28,6 +31,8 @@ import type {
   DesignBriefResult,
   ArchitecturalReading,
   CostEstimatorInput,
+  CostEstimateResult,
+  NarrativeWriterInput,
 } from "./types/agents.js";
 
 const app: Express = express();
@@ -315,6 +320,85 @@ app.post("/reports/:id/cost-estimate", async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
+// POST /reports/:id/narrative — Run narrative writer on existing report
+// ═══════════════════════════════════════════════════════════════════════════
+
+app.post("/reports/:id/narrative", async (req, res) => {
+  try {
+    const report = await getReport(req.params.id);
+    if (!report) {
+      res.status(404).json({ error: "Report not found" });
+      return;
+    }
+
+    const results = report.results as Record<string, unknown> | undefined;
+    const classification = results?.classification as ClassificationResult | undefined;
+    const designBrief = results?.design_brief as DesignBriefResult | undefined;
+    const costEstimate = results?.cost_estimate as CostEstimateResult | undefined;
+    const visualisation = results?.renovation_visualisation as
+      | { exteriors?: unknown[]; interiors?: unknown[] }
+      | undefined;
+    const listing = report.listing as ParsedListing;
+
+    if (!classification) {
+      res.status(400).json({ error: "Report has no classification — run classifier first" });
+      return;
+    }
+
+    if (!classification.architecturalReading) {
+      res.status(400).json({
+        error: "Classification has no architectural reading — re-run classifier",
+      });
+      return;
+    }
+
+    if (!designBrief) {
+      res.status(400).json({ error: "Report has no design brief — run design brief first" });
+      return;
+    }
+
+    if (!costEstimate) {
+      res.status(400).json({ error: "Report has no cost estimate — run cost estimator first" });
+      return;
+    }
+
+    // Check if already running
+    if (results?.narrative_status === "running") {
+      res.status(409).json({ error: "Narrative writer is already running for this report" });
+      return;
+    }
+
+    console.log(`[server] Starting narrative writer for report ${req.params.id}`);
+
+    // Mark as running
+    await mergeAgentResult(req.params.id, "narrative_status", "running");
+
+    // Return immediately
+    res.status(202).json({
+      id: req.params.id,
+      message: "Narrative writer started — poll GET /reports/:id for progress",
+    });
+
+    // Run in background
+    runNarrativePipeline(
+      req.params.id,
+      classification,
+      designBrief,
+      costEstimate,
+      visualisation,
+      listing,
+    ).catch((err) => {
+      console.error(`[server] Narrative writer pipeline failed for ${req.params.id}:`, err);
+    });
+  } catch (err) {
+    console.error("[server] POST /reports/:id/narrative error:", err);
+    res.status(500).json({
+      error: err instanceof Error ? err.message : "Internal server error",
+    });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
 // GET /pipeline — Static pipeline definition for the canvas UI
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -452,15 +536,19 @@ app.get("/pipeline", (_req, res) => {
         id: "narrative_writer",
         type: "agent",
         label: "Narrative Writer",
-        description: "Final agent — weaves all data into the Piega editorial voice. Opening verse, place narrative, building reading, honest reckoning, final verse.",
+        description: "Final agent — writes the editorial glue: opening hook, honest layer prose, value gap framing, transitions, and closing CTA.",
         tier: 4,
-        status: "planned",
-        trigger: "Automatic — after all agents complete",
-        endpoint: null,
+        status: "live",
+        trigger: "Manual — user clicks 'Run' on pipeline hub",
+        endpoint: "POST /reports/:id/narrative",
         outputKey: "results.narrative",
         model: "claude-sonnet-4-20250514",
-        promptPreview: null,
-        tech: ["Claude text", "LangGraph node"],
+        promptPreview: {
+          system: "You are the editorial writer for a UK property report. Your job is to write the connective tissue — the opening, transitions, and closing…",
+          userTemplate: "PROPERTY:\n{address}\n{priceDisplay} | {propertyType}\n\nISSUES IDENTIFIED:\n{issues}\n\nCOST ESTIMATE:\nTotal envelope: £{low}–£{high}\n\nWrite the NarrativeResult JSON.",
+          outputFormat: "Structured JSON: openingHook, buildingReadingTransition, honestLayerNarrative, numbersTransition, valueGapNarrative, closingStatement",
+        },
+        tech: ["Claude text", "Zod validation"],
       },
     ],
     edges: [
@@ -668,6 +756,68 @@ async function runCostEstimatePipeline(
   }
 }
 
+/**
+ * Run the narrative writer pipeline for an existing report.
+ * Requires classification (with architectural reading) + design brief + cost estimate.
+ * Visualiser output is optional.
+ */
+async function runNarrativePipeline(
+  reportId: string,
+  classification: ClassificationResult,
+  designBrief: DesignBriefResult,
+  costEstimate: CostEstimateResult,
+  visualisation: { exteriors?: unknown[]; interiors?: unknown[] } | undefined,
+  listing: ParsedListing,
+): Promise<void> {
+  console.log(`[server] Starting narrative writer pipeline for report ${reportId}`);
+
+  try {
+    const narrativeInput: NarrativeWriterInput = {
+      summary: classification.summary,
+      archetype: classification.archetype,
+      architecturalReading: classification.architecturalReading!,
+      transformationStrategy: designBrief.transformationStrategy,
+      conceptStatement: designBrief.conceptStatement,
+      strategyRationale: designBrief.strategyRationale,
+      totalEnvelope: costEstimate.totalEnvelope,
+      priceGap: costEstimate.priceGap,
+      phasedBudget: costEstimate.phasedBudget,
+      costDrivers: costEstimate.costDrivers,
+      confidenceStatement: costEstimate.confidenceStatement,
+      imageCount: {
+        exteriors: (visualisation?.exteriors as unknown[])?.length ?? 0,
+        interiors: (visualisation?.interiors as unknown[])?.length ?? 0,
+      },
+      hasVisualisation: !!visualisation?.exteriors?.length || !!visualisation?.interiors?.length,
+      address: listing.address ?? "Unknown address",
+      askingPrice: listing.askingPrice ?? 0,
+      priceDisplay: listing.priceDisplay ?? "Price unknown",
+      propertyType: listing.propertyType ?? "Unknown",
+      bedrooms: listing.bedrooms ?? 0,
+    };
+
+    const result = await runNarrativeWriter(narrativeInput);
+
+    // Write result
+    await mergeAgentResult(reportId, "narrative", result);
+    await mergeAgentResult(reportId, "narrative_status", "complete");
+
+    const totalWords = Object.values(result)
+      .join(" ")
+      .split(/\s+/).length;
+
+    console.log(
+      `[server] Narrative writer complete for ${reportId}: ${totalWords} words across 6 sections`,
+    );
+  } catch (err) {
+    console.error(`[server] Narrative writer pipeline error for ${reportId}:`, err);
+    await mergeAgentResult(reportId, "narrative_status", "error").catch(console.error);
+    const msg = err instanceof Error ? err.message : String(err);
+    const { appendReportError } = await import("./db/reports.js");
+    await appendReportError(reportId, `Narrative writer failed: ${msg}`).catch(console.error);
+  }
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // START
 // ═══════════════════════════════════════════════════════════════════════════
@@ -686,6 +836,7 @@ export function startServer(port = PORT): Promise<import("node:http").Server> {
       console.log(`[server] POST /reports/:id/design-brief — Run design brief`);
       console.log(`[server] POST /reports/:id/visualise — Run renovation visualiser`);
       console.log(`[server] POST /reports/:id/cost-estimate — Run cost estimator`);
+      console.log(`[server] POST /reports/:id/narrative — Run narrative writer`);
       console.log(`[server] GET  /pipeline             — Pipeline definition`);
       console.log(`[server] GET  /health               — Health check`);
       resolve(server);

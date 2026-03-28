@@ -69,10 +69,22 @@ const PIPELINE = [
     deps: ["classification", "design_brief"],
     group: "par",
   },
+  {
+    id: "narrative_writer",
+    label: "Narrative Writer",
+    icon: "◉",
+    brief: "Editorial glue — opening hook, honest layer, transitions, closing",
+    resultKey: "narrative",
+    triggerPath: (id) => `/reports/${id}/narrative`,
+    detailHref: (id) => `/agents/narrative/${id}`,
+    deps: ["classification", "design_brief", "cost_estimate"],
+    group: "post",
+  },
 ];
 
 const SEQ = PIPELINE.filter((a) => a.group === "seq");
 const PAR = PIPELINE.filter((a) => a.group === "par");
+const POST = PIPELINE.filter((a) => a.group === "post");
 
 /* ═══════════════════════════════════════════════════════════════════════════
    STATUS HELPERS
@@ -92,6 +104,7 @@ function getStatus(agent, report, running) {
   if (agent.resultKey && report.results?.[agent.resultKey]) return "complete";
   if (running.has(agent.id)) return "running";
   if (agent.id === "cost_estimator" && report.results?.cost_estimate_status === "running") return "running";
+  if (agent.id === "narrative_writer" && report.results?.narrative_status === "running") return "running";
   if (agent.auto && ["pending", "running"].includes(report.status) && !report.results?.[agent.resultKey]) return "running";
   if (!agent.deps.every((k) => report.results?.[k])) return "locked";
   return "idle";
@@ -130,6 +143,12 @@ function getSummary(agent, report) {
       if (low && high) return `£${Math.round(low / 1000)}k – £${Math.round(high / 1000)}k estimated`;
       return "Estimate complete";
     }
+    case "narrative_writer": {
+      const n = r.narrative;
+      if (!n?.openingHook) return null;
+      const s = n.openingHook;
+      return s.length > 100 ? s.slice(0, 97) + "…" : s;
+    }
     default:
       return null;
   }
@@ -137,7 +156,7 @@ function getSummary(agent, report) {
 
 function getLockedReason(agent, report) {
   if (!report) return "";
-  const labels = { classification: "Classifier", design_brief: "Design Brief" };
+  const labels = { classification: "Classifier", design_brief: "Design Brief", cost_estimate: "Cost Estimator", narrative: "Narrative Writer" };
   return agent.deps
     .filter((k) => !report.results?.[k])
     .map((k) => labels[k] ?? k)
@@ -654,6 +673,44 @@ export default function PipelineHubPage() {
                   />
                 ))}
               </div>
+
+              {/* Rejoin connector + post-parallel agents */}
+              {POST.length > 0 && (
+                <>
+                  <Connector />
+                  {POST.map((agent, i) => (
+                    <div key={agent.id}>
+                      {i > 0 && <Connector />}
+                      <AgentCard
+                        agent={agent}
+                        report={report}
+                        status={getStatus(agent, report, running)}
+                        onTrigger={trigger}
+                        triggerError={triggerErrors[agent.id]}
+                      />
+                    </div>
+                  ))}
+                </>
+              )}
+
+              {/* View Report link (when narrative is done) */}
+              {report.results?.narrative && (
+                <div style={{ textAlign: "center", marginTop: 24 }}>
+                  <Link
+                    href={`/report/${report.id}`}
+                    style={{
+                      display: "inline-flex", alignItems: "center", gap: 8,
+                      fontSize: 14, fontWeight: 600, color: C.paper,
+                      padding: "12px 28px", borderRadius: 6,
+                      background: C.terracotta,
+                      textDecoration: "none",
+                      transition: "opacity 0.15s",
+                    }}
+                  >
+                    View Report →
+                  </Link>
+                </div>
+              )}
 
               {/* Raw JSON debug */}
               <details style={{ marginTop: 32 }}>

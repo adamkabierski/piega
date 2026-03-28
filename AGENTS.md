@@ -6,18 +6,18 @@
 
 ## How it works — end to end
 
-The full user journey runs in six steps:
+The full user journey runs in eight steps:
 
 ```
-[ Step 1 ]              [ Step 2 ]                    [ Step 3 ]              [ Step 4 + 5 (parallel) ]
-  Chrome Extension  →     Classifier              →     Design Brief      →     Renovation Visualiser
-  (data collection)       + Architectural Reading       (renovation concept)    + Cost Estimator
-  automatic               automatic                    manual trigger          manual trigger
+[ Step 1 ]              [ Step 2 ]                    [ Step 3 ]              [ Step 4 + 5 (parallel) ]          [ Step 6 ]              [ Step 7 ]
+  Chrome Extension  →     Classifier              →     Design Brief      →     Renovation Visualiser      →     Narrative Writer   →     Report Assembly
+  (data collection)       + Architectural Reading       (renovation concept)    + Cost Estimator                  (editorial glue)        (rendered page)
+  automatic               automatic                    manual trigger          manual trigger                    manual trigger          no AI — just layout
 ```
 
-After the Design Brief, the **Renovation Visualiser** and **Cost Estimator** can run in parallel — neither depends on the other. Both depend on the Classifier + Design Brief.
+After the Design Brief, the **Renovation Visualiser** and **Cost Estimator** can run in parallel — neither depends on the other. Both depend on the Classifier + Design Brief. After both complete, the **Narrative Writer** writes the editorial glue that holds the report together. Finally, the **Report Assembly** renders all outputs into a single shareable page — no AI, just layout.
 
-Each step hands off to the next via a shared Supabase record. Nothing is coupled directly — the extension just creates a row, the classifier fills it in, the brief interprets it, the visualiser and cost estimator follow it.
+Each step hands off to the next via a shared Supabase record. Nothing is coupled directly — the extension just creates a row, the classifier fills it in, the brief interprets it, the visualiser and cost estimator follow it, the narrative writer weaves it into prose, and the report page reads it all.
 
 ---
 
@@ -25,7 +25,7 @@ Each step hands off to the next via a shared Supabase record. Nothing is coupled
 
 ### What it does
 
-The Chrome extension runs silently in the background whenever you visit a Rightmove property page. It reads all the data Rightmove has embedded in the page — address, price, description, photos, bedrooms, bathrooms, agent, postcode — and makes it available in a small popup. When you click **"Analyse Property"**, it sends that data to the Piega backend and opens the report page.
+The Chrome extension runs silently in the background whenever you visit a Rightmove property page. It reads all the data Rightmove has embedded in the page — address, price, description, photos, bedrooms, bathrooms, agent, postcode — and makes it available in a small popup. When you click **"Analyse Property"**, it sends that data to the Piega backend and opens the pipeline hub for that report.
 
 ### What it produces
 
@@ -64,7 +64,7 @@ Popup shows: address, price, bed/bath count, "Analyse Property" button
     |
     |  User clicks "Analyse Property"
     v
-POST /reports  ->  returns report ID  ->  opens /reports/{id} in new tab
+POST /reports  ->  returns report ID  ->  opens /pipeline/{id} in new tab
 ```
 
 The content script runs silently — it does not modify the page, show any UI, or make network requests. The network call only happens when the user explicitly clicks the button.
@@ -189,7 +189,7 @@ It answers four questions:
 ### How it works
 
 ```
-User clicks "Generate Brief" on /design-brief/{reportId}
+User clicks "Run" on the Design Brief card in /pipeline/{reportId}
     |
     v
 Agent reads results.classification from the report
@@ -241,7 +241,7 @@ Results are split into up to 3 exteriors and 2 interiors.
 ### How it works
 
 ```
-User clicks "Run Visualiser" on /visualiser/{reportId}
+User clicks "Run" on the Renovation Visualiser card in /pipeline/{reportId}
     |
     v
 Agent reads results.classification from the report
@@ -312,7 +312,7 @@ From the **listing**: asking price, address, property type, bedrooms, bathrooms.
 ### How it works
 
 ```
-User clicks "Run Cost Estimate" on /cost-estimate/{reportId}
+User clicks "Run" on the Cost Estimator card in /pipeline/{reportId}
     |
     v
 Agent reads results.classification.architecturalReading
@@ -350,27 +350,191 @@ The estimator infers the region from the address and adjusts:
 
 ---
 
+## Step 6 — Narrative Writer
+
+### What it does
+
+The Narrative Writer is the final AI step. It reads every prior agent's output — classification, architectural reading, design brief, cost estimate, and optionally the visualiser's image count — and writes the editorial glue that holds the assembled report together.
+
+It does not repeat or summarise. Each section is a transition, a reframing, or a perspective shift that makes the report read as a single authored document rather than a stack of agent outputs.
+
+### What it produces
+
+Six short prose sections, totalling 400–500 words:
+
+- **Opening hook** — the first thing the reader sees. Establishes place, character, and the central tension of the property in 2–3 sentences.
+- **Building reading transition** — bridges from the hook into the architectural analysis. Sets up "here's what we found when we looked closely."
+- **Honest layer narrative** — reframes the classifier's issues and unknowns into plain English. Mentions every issue and unknown, with actual severity. Not alarmist, not dismissive.
+- **Numbers transition** — bridges from the honest layer into the cost chapter. One sentence that says "here's what all that means in money."
+- **Value gap narrative** — interprets the cost estimate's price gap in context. Uses actual £ figures. Says whether the numbers work, barely work, or need caution.
+- **Closing statement** — final thought. Forward-looking, honest, grounded. Ends the report.
+
+### How it works
+
+```
+User clicks "Run" on the Narrative Writer card in /pipeline/{reportId}
+    |
+    v
+Agent reads:
+    results.classification (summary, archetype, architecturalReading)
+    results.design_brief (conceptStatement, strategy, rationale)
+    results.cost_estimate (totalEnvelope, priceGap, phasedBudget, costDrivers)
+    results.renovation_visualisation (image count, optional)
+    |
+    v
+Assembles NarrativeWriterInput from all sources
+    |
+    v
+Sends a single text message to Claude (temperature 0.4):
+    - property context (address, price, type, beds/baths)
+    - archetype + era + construction
+    - classifier summary + issues + unknowns
+    - design brief concept + strategy
+    - cost estimate numbers (total, price gap, cost drivers)
+    - image count from visualiser
+    |
+    v
+Claude responds with structured JSON (6 string fields)
+    |
+    v
+Response validated with Zod and written to:
+    results.narrative = { openingHook, buildingReadingTransition, honestLayerNarrative, ... }
+```
+
+Cost is ~$0.005 per report (single text call, no vision, low max tokens).
+
+### Voice and tone
+
+- Warm, knowledgeable, direct — like an experienced architect talking to a friend
+- British English throughout
+- No exclamation marks, no superlatives, no estate agent language
+- Refers to the building as "it" or "the house" — never "this property"
+- Every issue gets mentioned. Every £ figure is real. Nothing is vague.
+
+### Known limitations
+
+- **Depends on all prior agents** — requires classification, design brief, and cost estimate to be complete. Visualiser is optional but enriches the output.
+- **No independent research** — the narrative writer only works with what the other agents produced. If the classifier missed something, the narrative can't catch it.
+- **Tone consistency** — at temperature 0.4 the voice is fairly stable, but different properties may get slightly different editorial registers.
+
+---
+
+## Step 7 — Report Assembly
+
+### What it does
+
+The Report Assembly is not an AI agent — it's a server-rendered page that reads all agent outputs and the narrative writer's editorial glue, and renders them into a single scrolling document at `/report/{reportId}`.
+
+This is the shareable output. The thing you'd send to a client, a partner, or yourself.
+
+### What it produces
+
+A single-page report with five sections:
+
+1. **Hero** — property image, address, price, archetype badge, and the narrative writer's opening hook
+2. **Chapter 1: What You're Looking At** — the classifier's architectural reading (building narrative, period features, construction inferences) with the narrative's building reading transition
+3. **Chapter 2: What It Could Become** — the design brief's concept statement, design language (palette, materials, mood), and before/after image pairs from the visualiser
+4. **Chapter 3: What to Investigate** — the narrative writer's honest layer (reframed issues and unknowns)
+5. **Chapter 4: The Numbers** — budget breakdown bar, total envelope, price gap visual, phased budget timeline, cost drivers, and the narrative's value gap interpretation
+6. **Closing** — the narrative writer's closing statement
+
+### Design
+
+- 680px max-width, warm off-white background (`#FAF8F5`)
+- Serif headings (Playfair Display), editorial body text (EB Garamond)
+- Not a dashboard — a document. Generous whitespace, chapter numbering, visual dividers
+- Graceful degradation: works without visualiser images (shows placeholder), minimum requires classifier + design brief + narrative
+
+### How it works
+
+```
+User clicks "View Report →" on the pipeline hub
+    (or navigates directly to /report/{reportId})
+    |
+    v
+Next.js page fetches GET /reports/{reportId}
+    |
+    v
+Reads all result keys:
+    results.classification
+    results.design_brief
+    results.renovation_visualisation (optional)
+    results.cost_estimate
+    results.narrative
+    |
+    v
+Renders chapters in order, weaving narrative sections
+between data sections. Missing agents degrade gracefully.
+```
+
+Cost: $0 — no AI, no API calls. Just rendering.
+
+---
+
 ## How the steps relate
 
 ```
-[ Step 1 ]                [ Step 2 ]                      [ Step 3 ]               [ Step 4 + 5 ]
-Chrome Extension          Classifier                      Design Brief             Parallel agents
-----------------          ----------                      ------------             ---------------
-Runs on every             Runs automatically               Runs on demand           Runs on demand
-Rightmove page            when report is created           user triggers it         user triggers
+[ Step 1 ]                [ Step 2 ]                      [ Step 3 ]               [ Step 4 + 5 ]            [ Step 6 ]             [ Step 7 ]
+Chrome Extension          Classifier                      Design Brief             Parallel agents           Narrative Writer       Report Assembly
+----------------          ----------                      ------------             ---------------           ----------------       ---------------
+Runs on every             Runs automatically               Runs on demand           Runs on demand            Runs on demand         No AI — layout
+Rightmove page            when report is created           user triggers it         user triggers             user triggers          user opens page
 
-Reads page data      ->   Call 1: archetype +          ->  Reads archetype,     ->  Visualiser: images
-Stores locally            image classification              image observations       + brief → fal.ai
-POST /reports             Call 2: architectural reading    Creates unified
-Opens report page         Writes:                          renovation concept       Cost Estimator:
-                          results.classification           (palette, materials,     reading + brief
-                          └── .architecturalReading        mood, strategy)          → budget ranges
+Reads page data      ->   Call 1: archetype +          ->  Reads archetype,     ->  Visualiser: images    ->  Reads all prior    ->  Renders all
+Stores locally            image classification              image observations       + brief → fal.ai         agent outputs          outputs into
+POST /reports             Call 2: architectural reading    Creates unified                                    Writes editorial       single scrolling
+Opens pipeline hub        Writes:                          renovation concept       Cost Estimator:           glue (6 sections)      document
+                          results.classification           (palette, materials,     reading + brief           Writes:                Reads:
+                          └── .architecturalReading        mood, strategy)          → budget ranges           results.narrative      all results.* keys
                                                            Writes:
                                                            results.design_brief     Both write to
                                                                                     results.* keys
 ```
 
-The **Classifier** (both calls) is a prerequisite for everything. The **Design Brief** is a prerequisite for the **Cost Estimator** (required) and the **Visualiser** (optional — falls back to standalone mode without it). The **Visualiser** and **Cost Estimator** are independent and can run in parallel.
+The **Classifier** (both calls) is a prerequisite for everything. The **Design Brief** is a prerequisite for the **Cost Estimator** (required) and the **Visualiser** (optional — falls back to standalone mode without it). The **Visualiser** and **Cost Estimator** are independent and can run in parallel. The **Narrative Writer** requires classification, design brief, and cost estimate — the visualiser is optional but enriches the output. The **Report Assembly** reads everything and renders it — no AI.
+
+---
+
+## Pipeline Hub
+
+All agents are managed from a single **Pipeline Hub** page at `/pipeline/{reportId}`. This is the primary interface after the Chrome extension sends data.
+
+The hub shows:
+- **Property header** — address, price, archetype badge, progress counter (X/5 agents done)
+- **Sequential agents** — Extension → Classifier → Design Brief, rendered vertically with connector lines
+- **Parallel agents** — Visualiser + Cost Estimator, rendered side-by-side after a fork connector
+- **Post-parallel agent** — Narrative Writer, rendered after a rejoin connector below the parallel pair
+- **Per-agent cards** — status badge (Complete / Running / Ready / Waiting), summary, action buttons (Run ▶, Re-run ↻, View Results →)
+- **View Report →** — appears when the Narrative Writer completes, linking to `/report/{reportId}`
+
+Agent status is derived from `report.results`:
+- **Complete** — the agent's `resultKey` exists in results
+- **Running** — a trigger is in-flight or the report status is pending
+- **Ready** — all dependencies met, waiting for user to trigger
+- **Waiting** — dependencies not yet complete (shows which agents are blocking)
+
+The hub polls every 3 seconds to reflect background agent progress (e.g. the classifier finishing).
+
+Clicking **View Results →** navigates to the agent's detail page at `/agents/{agent-name}/{reportId}`. Each detail page has a **← Pipeline** back link.
+
+The report picker at `/pipeline` lists all reports with a mini progress bar.
+
+---
+
+## URL structure
+
+| Route | Purpose |
+|---|---|
+| `/pipeline` | Report picker — lists all reports with pipeline progress |
+| `/pipeline/{reportId}` | Pipeline hub — per-report agent control center |
+| `/agents/classifier/{reportId}` | Classifier detail (archetype, images, architectural reading) |
+| `/agents/design-brief/{reportId}` | Design Brief detail (concept, palette, image selections) |
+| `/agents/visualiser/{reportId}` | Renovation Visualiser detail (before/after pairs) |
+| `/agents/cost-estimate/{reportId}` | Cost Estimator detail (budget breakdown, phased costs) |
+| `/agents/narrative/{reportId}` | Narrative Writer detail (6 editorial sections) |
+| `/report/{reportId}` | Assembled report — the shareable, single-page output |
+
+Old URLs (`/reports/{id}`, `/design-brief/{id}`, `/visualiser/{id}`, `/cost-estimate/{id}`) redirect to their new equivalents.
 
 ---
 
@@ -386,12 +550,13 @@ The **Classifier** (both calls) is a prerequisite for everything. The **Design B
 | Renovation Visualiser | Generating "after" images (cheaper alt) | `nano-banana-2` → Gemini 3.1 Flash Image | fal.ai | $0.08 / image |
 | Renovation Visualiser | Post-production polish (optional) | `nano-banana-pro` | fal.ai | $0.15 / image |
 | Cost Estimator | Desktop cost appraisal | `claude-sonnet-4-20250514` | Anthropic | ~$0.01 / report |
+| Narrative Writer | Editorial glue (6 sections) | `claude-sonnet-4-20250514` | Anthropic | ~$0.005 / report |
 
 Nano Banana is a Google Gemini image model served via the fal.ai platform. Both variants accept an original photo + a text instruction and return a photo-realistic edited version. The model understands spatial relationships, lighting, and scene structure — it modifies the image rather than replacing it wholesale.
 
 The default production model is `nano-banana-pro`. At 5 images per report (with post-production) that's $1.50 per report for images.
 
-**Total per report**: ~$0.55–0.90 without post-production, ~$1.05–1.65 with post-production.
+**Total per report**: ~$0.56–0.91 without post-production, ~$1.06–1.66 with post-production.
 
 ---
 
@@ -405,5 +570,6 @@ piega_reports.results
 │   └── architecturalReading           <- written by Architectural Reading (Call 2)
 ├── design_brief                       <- written by Design Brief
 ├── renovation_visualisation           <- written by Renovation Visualiser
-└── cost_estimate                      <- written by Cost Estimator
+├── cost_estimate                      <- written by Cost Estimator
+└── narrative                          <- written by Narrative Writer
 ```

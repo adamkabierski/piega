@@ -107,6 +107,7 @@ const DEPICTS_LABELS = {
 function BeforeAfterPair({ result, index }) {
   const [showAfter, setShowAfter] = useState(true);
   const label = DEPICTS_LABELS[result.depicts] ?? result.depicts;
+  const hasPostProduction = !!result.prePostProductionUrl;
 
   return (
     <Card style={{ padding: 0, overflow: "hidden" }}>
@@ -133,17 +134,23 @@ function BeforeAfterPair({ result, index }) {
             </span>
           )}
         </div>
-        <Badge color={result.type === "exterior" ? C.sage : C.clay}>
-          {result.type}
-        </Badge>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          {hasPostProduction && (
+            <Badge color={C.accent}>Post-produced</Badge>
+          )}
+          <Badge color={result.type === "exterior" ? C.sage : C.clay}>
+            {result.type}
+          </Badge>
+        </div>
       </div>
 
       {/* Image area */}
       <div style={{
-        display: "grid", gridTemplateColumns: "1fr 1fr",
+        display: "grid",
+        gridTemplateColumns: hasPostProduction ? "1fr 1fr 1fr" : "1fr 1fr",
         gap: 0,
       }}>
-        {/* Before */}
+        {/* Before (original) */}
         <div style={{ position: "relative" }}>
           <div style={{
             position: "absolute", top: 8, left: 8, zIndex: 2,
@@ -168,7 +175,34 @@ function BeforeAfterPair({ result, index }) {
           </div>
         </div>
 
-        {/* After */}
+        {/* Pre-post-production (raw renovation) — only shown when post-production ran */}
+        {hasPostProduction && (
+          <div style={{ position: "relative", borderLeft: `1px solid ${C.bd}` }}>
+            <div style={{
+              position: "absolute", top: 8, left: 8, zIndex: 2,
+              fontSize: 9, fontWeight: 600, letterSpacing: 1,
+              color: C.clay, textTransform: "uppercase",
+              background: "rgba(26,24,22,0.85)", padding: "3px 8px",
+              borderRadius: 3,
+            }}>
+              Renovation
+            </div>
+            <div style={{ paddingTop: "66%", position: "relative", background: "#141210" }}>
+              <img
+                src={result.prePostProductionUrl}
+                alt={`${label} — renovation (raw)`}
+                style={{
+                  position: "absolute", inset: 0,
+                  width: "100%", height: "100%",
+                  objectFit: "cover",
+                }}
+                loading="lazy"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* After (final — post-produced or raw if no post-production) */}
         <div style={{ position: "relative", borderLeft: `1px solid ${C.bd}` }}>
           <div style={{
             position: "absolute", top: 8, left: 8, zIndex: 2,
@@ -177,7 +211,7 @@ function BeforeAfterPair({ result, index }) {
             background: "rgba(26,24,22,0.85)", padding: "3px 8px",
             borderRadius: 3,
           }}>
-            After
+            {hasPostProduction ? "Post-produced" : "After"}
           </div>
           <div style={{ paddingTop: "66%", position: "relative", background: "#141210" }}>
             <img

@@ -62,6 +62,8 @@ export interface VisualisationResult {
   imageIndex: number;
   originalUrl: string;
   renovatedUrl: string;
+  /** URL of the renovation BEFORE post-production (null if post-production was off) */
+  prePostProductionUrl: string | null;
   depicts: ImageSubject;
   room: string | null;
   type: "exterior" | "interior";
@@ -287,8 +289,10 @@ async function processOneImage(
 
   // Step 4: Post-production — polish to architectural photography standard
   let finalUrl = generated.url;
+  let prePostProductionUrl: string | null = null;
   if (enablePostProduction) {
     try {
+      prePostProductionUrl = generated.url;
       const isExterior = req.type === "exterior";
       const polished = await postProcessImage(
         generated.url,
@@ -303,6 +307,7 @@ async function processOneImage(
         err instanceof Error ? err.message : err,
       );
       // Fall back to the raw generated image
+      prePostProductionUrl = null;
     }
   }
 
@@ -310,6 +315,7 @@ async function processOneImage(
     imageIndex: req.imageIndex,
     originalUrl: req.imageUrl,
     renovatedUrl: finalUrl,
+    prePostProductionUrl,
     depicts: req.depicts,
     room: req.room,
     type: req.type,

@@ -144,8 +144,8 @@ analyseBtn.addEventListener('click', async () => {
 
     setStatus('ok', `Report started — opening…`);
 
-    // Open debug page
-    await chrome.tabs.create({ url: `${APP_URL}/reports/${reportId}` });
+    // Open pipeline hub
+    await chrome.tabs.create({ url: `${APP_URL}/pipeline/${reportId}` });
 
     // Close popup after brief delay
     setTimeout(() => window.close(), 400);
@@ -160,7 +160,7 @@ analyseBtn.addEventListener('click', async () => {
 // ── Open Last Report button ───────────────────────────────────────────────
 openLastBtn.addEventListener('click', async () => {
   if (!lastReportId) return;
-  await chrome.tabs.create({ url: `${APP_URL}/reports/${lastReportId}` });
+  await chrome.tabs.create({ url: `${APP_URL}/pipeline/${lastReportId}` });
   window.close();
 });
 

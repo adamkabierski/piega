@@ -52,7 +52,10 @@ export default function HomePage() {
       {/* Header */}
       <header style={{ padding: "28px 40px", display: "flex", alignItems: "center", justifyContent: "space-between", opacity: 0, animation: "arise .8s ease .2s forwards" }}>
         <div style={{ fontFamily: "'Playfair Display',serif", fontSize: "17px", fontStyle: "italic", color: C.accentDark, letterSpacing: "0.02em" }}>Piega</div>
-        <div style={{ fontFamily: "'EB Garamond',serif", fontSize: "12px", fontStyle: "italic", color: `${C.tertGrey}60` }}>Early access · UK property</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
+          <Link href="/pipeline" style={{ fontFamily: "'EB Garamond',serif", fontSize: "12px", color: C.accent, textDecoration: "none", letterSpacing: "0.08em", borderBottom: `1px solid ${C.bd}`, paddingBottom: 1, transition: "border-color .3s" }}>Pipeline →</Link>
+          <div style={{ fontFamily: "'EB Garamond',serif", fontSize: "12px", fontStyle: "italic", color: `${C.tertGrey}60` }}>Early access · UK property</div>
+        </div>
       </header>
 
       {/* Hero */}

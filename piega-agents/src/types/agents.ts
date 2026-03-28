@@ -30,6 +30,36 @@ export interface ClassificationResult {
     classification: ImageClassification;
   }>;
   summary: string; // 2-3 sentence architectural reading
+  /** Expanded reading — produced by a second vision call after classification */
+  architecturalReading?: ArchitecturalReading;
+}
+
+export interface ArchitecturalReading {
+  /** 3-4 paragraphs, architect voice — the "what you're looking at" section */
+  buildingNarrative: string;
+  constructionInferences: {
+    wallType: string;
+    roofStructure: string;
+    foundations: string;
+    insulation: string;
+    windowsAndDoors: string;
+    heatingAndServices: string;
+    confidence: ConfidenceLevel;
+  };
+  periodFeatures: Array<{
+    feature: string;
+    status: string;
+    confidence: ConfidenceLevel;
+    recommendation: string;
+  }>;
+  issuesIdentified: Array<{
+    issue: string;
+    severity: "minor" | "moderate" | "significant" | "unknown";
+    evidence: string;
+    implication: string;
+  }>;
+  /** Things that matter but can't be assessed from listing photos */
+  unknowns: string[];
 }
 
 export interface ImageClassification {
@@ -180,33 +210,73 @@ export interface RenovationPlanResult {
 // COST ESTIMATOR
 // ═══════════════════════════════════════════════════════════════════════════
 
+export interface CostEstimatorInput {
+  archetype: ClassificationResult["archetype"];
+  architecturalReading: ArchitecturalReading;
+  transformationStrategy: TransformationStrategy;
+  designLanguage: DesignBriefResult["designLanguage"];
+  conceptStatement: string;
+  askingPrice: number;
+  address: string;
+  propertyType: string;
+  bedrooms: number;
+  bathrooms: number;
+  comparableSales?: Array<{
+    address: string;
+    price: number;
+    date: string;
+    propertyType: string;
+  }> | null;
+}
+
 export interface CostEstimateResult {
   budgetBreakdown: Array<{
-    category: string; // "Structural", "M&E", "Finishes", "Contingency", "Fees"
+    category: string;
     low: number;
     high: number;
-    percentage: number; // of total
+    percentage: number;
+    notes: string;
   }>;
   totalEnvelope: { low: number; high: number };
   priceGap: {
     askingPrice: number;
-    estimatedPostWorksValue: { low: number; high: number };
-    refurbCost: { low: number; high: number };
-    // Purpose-specific:
-    netMargin?: { low: number; high: number }; // for flip
-    grossYield?: { low: number; high: number }; // for rent_out
-    equityGain?: { low: number; high: number }; // for live_in
+    estimatedPostWorksValue: {
+      low: number;
+      high: number;
+      basis: string;
+    };
+    totalInvestment: {
+      low: number;
+      high: number;
+    };
   };
   phasedBudget: {
-    moveInBasics: { low: number; high: number; description: string };
-    yearOneTwo: { low: number; high: number; description: string };
-    completeVision: { low: number; high: number; description: string };
+    moveInBasics: {
+      low: number;
+      high: number;
+      description: string;
+      timeframe: string;
+    };
+    yearOneTwo: {
+      low: number;
+      high: number;
+      description: string;
+      timeframe: string;
+    };
+    completeVision: {
+      low: number;
+      high: number;
+      description: string;
+      timeframe: string;
+    };
   };
-  scenarios: {
-    best: { description: string; totalCost: number; outcome: string };
-    worst: { description: string; totalCost: number; outcome: string };
-  };
-  confidenceNotes: string; // honest disclaimer about estimate reliability
+  keyAssumptions: string[];
+  confidenceStatement: string;
+  costDrivers: Array<{
+    factor: string;
+    impact: string;
+    currentAssumption: string;
+  }>;
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

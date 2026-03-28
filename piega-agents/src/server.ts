@@ -20,9 +20,15 @@ import { createReport, getReport, updateReportStatus, mergeAgentResult } from ".
 import { generateReport } from "./graph/index.js";
 import { runRenovationVisualiser } from "./agents/renovationVisualiser.js";
 import { runDesignBrief } from "./agents/designBrief.js";
+import { runCostEstimator } from "./agents/costEstimator.js";
 import type { ParsedListing } from "./types/listing.js";
 import type { BuyerPurpose } from "./types/common.js";
-import type { ClassificationResult, DesignBriefResult } from "./types/agents.js";
+import type {
+  ClassificationResult,
+  DesignBriefResult,
+  ArchitecturalReading,
+  CostEstimatorInput,
+} from "./types/agents.js";
 
 const app: Express = express();
 const PORT = parseInt(process.env.PORT ?? "3001", 10);
@@ -241,6 +247,74 @@ app.post("/reports/:id/visualise", async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
+// POST /reports/:id/cost-estimate — Run cost estimator on existing report
+// ═══════════════════════════════════════════════════════════════════════════
+
+app.post("/reports/:id/cost-estimate", async (req, res) => {
+  try {
+    const report = await getReport(req.params.id);
+    if (!report) {
+      res.status(404).json({ error: "Report not found" });
+      return;
+    }
+
+    const results = report.results as Record<string, unknown> | undefined;
+    const classification = results?.classification as ClassificationResult | undefined;
+    const designBrief = results?.design_brief as DesignBriefResult | undefined;
+    const listing = report.listing as ParsedListing;
+
+    if (!classification) {
+      res.status(400).json({ error: "Report has no classification — run classifier first" });
+      return;
+    }
+
+    if (!classification.architecturalReading) {
+      res.status(400).json({
+        error: "Classification has no architectural reading — re-run classifier to get the expanded output",
+      });
+      return;
+    }
+
+    if (!designBrief) {
+      res.status(400).json({ error: "Report has no design brief — run design brief first" });
+      return;
+    }
+
+    // Check if already running
+    if (results?.cost_estimate_status === "running") {
+      res.status(409).json({ error: "Cost estimator is already running for this report" });
+      return;
+    }
+
+    console.log(`[server] Starting cost estimator for report ${req.params.id}`);
+
+    // Mark as running
+    await mergeAgentResult(req.params.id, "cost_estimate_status", "running");
+
+    // Return immediately
+    res.status(202).json({
+      id: req.params.id,
+      message: "Cost estimator started — poll GET /reports/:id for progress",
+    });
+
+    // Run in background
+    runCostEstimatePipeline(
+      req.params.id,
+      classification,
+      designBrief,
+      listing,
+    ).catch((err) => {
+      console.error(`[server] Cost estimator pipeline failed for ${req.params.id}:`, err);
+    });
+  } catch (err) {
+    console.error("[server] POST /reports/:id/cost-estimate error:", err);
+    res.status(500).json({
+      error: err instanceof Error ? err.message : "Internal server error",
+    });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
 // GET /pipeline — Static pipeline definition for the canvas UI
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -360,15 +434,19 @@ app.get("/pipeline", (_req, res) => {
         id: "cost_estimator",
         type: "agent",
         label: "Cost Estimator",
-        description: "Produces budget breakdown, price-gap analysis, phased budget (move-in basics → year 1-2 → complete vision), best/worst scenarios.",
-        tier: 3,
-        status: "planned",
-        trigger: "Automatic — after renovation architect",
-        endpoint: null,
-        outputKey: "results.costEstimate",
+        description: "Desktop cost appraisal: budget breakdown by category, price-gap analysis, phased budget (move-in basics → year 1-2 → complete vision), key cost drivers.",
+        tier: 2,
+        status: "live",
+        trigger: "Manual — user clicks 'Run Cost Estimate'",
+        endpoint: "POST /reports/:id/cost-estimate",
+        outputKey: "results.cost_estimate",
         model: "claude-sonnet-4-20250514",
-        promptPreview: null,
-        tech: ["Claude text", "LangGraph node"],
+        promptPreview: {
+          system: "You are a UK quantity surveyor producing a desktop cost appraisal for a residential renovation project. You have NOT visited the site…",
+          userTemplate: "Property: {address}, £{askingPrice}\nArchetype: {archetype} ({era})\nConstruction inferences: walls, roof, insulation…\nIssues: {issuesIdentified}\nDesign brief: {strategy}, {palette}, {materials}\n\nProduce the CostEstimateResult JSON.",
+          outputFormat: "Structured JSON: budgetBreakdown[], totalEnvelope, priceGap, phasedBudget, keyAssumptions, confidenceStatement, costDrivers[]",
+        },
+        tech: ["Claude text", "Zod validation"],
       },
       {
         id: "narrative_writer",
@@ -387,16 +465,17 @@ app.get("/pipeline", (_req, res) => {
     ],
     edges: [
       { from: "chrome_extension", to: "classifier", label: "listing JSON" },
-      { from: "classifier", to: "design_brief", label: "classification" },
+      { from: "classifier", to: "design_brief", label: "classification + architectural reading" },
       { from: "design_brief", to: "renovation_visualiser", label: "design brief" },
       { from: "classifier", to: "renovation_visualiser", label: "classification (fallback)", dashed: true },
+      { from: "design_brief", to: "cost_estimator", label: "design brief" },
+      { from: "classifier", to: "cost_estimator", label: "archetype + architectural reading" },
       { from: "classifier", to: "building_reader", label: "images + archetype", planned: true },
       { from: "chrome_extension", to: "area_analyst", label: "postcode + enriched area", planned: true },
       { from: "classifier", to: "renovation_architect", label: "archetype", planned: true },
       { from: "building_reader", to: "renovation_architect", label: "condition data", planned: true },
-      { from: "renovation_architect", to: "cost_estimator", label: "renovation plan", planned: true },
       { from: "renovation_architect", to: "renovation_visualiser", label: "material palette", planned: true },
-      { from: "cost_estimator", to: "narrative_writer", label: "all data", planned: true },
+      { from: "cost_estimator", to: "narrative_writer", label: "cost data", planned: true },
       { from: "area_analyst", to: "narrative_writer", label: "area data", planned: true },
     ],
     tiers: [
@@ -543,6 +622,52 @@ async function runVisualiserPipeline(
   }
 }
 
+/**
+ * Run the cost estimator pipeline for an existing classified report.
+ * Requires classification (with architectural reading) + design brief.
+ */
+async function runCostEstimatePipeline(
+  reportId: string,
+  classification: ClassificationResult,
+  designBrief: DesignBriefResult,
+  listing: ParsedListing,
+): Promise<void> {
+  console.log(`[server] Starting cost estimator pipeline for report ${reportId}`);
+
+  try {
+    const costInput: CostEstimatorInput = {
+      archetype: classification.archetype,
+      architecturalReading: classification.architecturalReading!,
+      transformationStrategy: designBrief.transformationStrategy,
+      designLanguage: designBrief.designLanguage,
+      conceptStatement: designBrief.conceptStatement,
+      askingPrice: listing.askingPrice ?? 0,
+      address: listing.address ?? "Unknown address",
+      propertyType: listing.propertyType ?? "Unknown",
+      bedrooms: listing.bedrooms ?? 0,
+      bathrooms: listing.bathrooms ?? 0,
+      comparableSales: null, // future: from area enrichment
+    };
+
+    const result = await runCostEstimator(costInput);
+
+    // Write result
+    await mergeAgentResult(reportId, "cost_estimate", result);
+    await mergeAgentResult(reportId, "cost_estimate_status", "complete");
+
+    console.log(
+      `[server] Cost estimator complete for ${reportId}: ` +
+        `£${result.totalEnvelope.low.toLocaleString("en-GB")}–£${result.totalEnvelope.high.toLocaleString("en-GB")}`,
+    );
+  } catch (err) {
+    console.error(`[server] Cost estimator pipeline error for ${reportId}:`, err);
+    await mergeAgentResult(reportId, "cost_estimate_status", "error").catch(console.error);
+    const msg = err instanceof Error ? err.message : String(err);
+    const { appendReportError } = await import("./db/reports.js");
+    await appendReportError(reportId, `Cost estimator failed: ${msg}`).catch(console.error);
+  }
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // START
 // ═══════════════════════════════════════════════════════════════════════════
@@ -560,6 +685,7 @@ export function startServer(port = PORT): Promise<import("node:http").Server> {
       console.log(`[server] GET  /reports/:id          — Get report by ID`);
       console.log(`[server] POST /reports/:id/design-brief — Run design brief`);
       console.log(`[server] POST /reports/:id/visualise — Run renovation visualiser`);
+      console.log(`[server] POST /reports/:id/cost-estimate — Run cost estimator`);
       console.log(`[server] GET  /pipeline             — Pipeline definition`);
       console.log(`[server] GET  /health               — Health check`);
       resolve(server);

@@ -1,21 +1,23 @@
 ﻿# Piega — Agent Overview
 
-*Last updated: March 27, 2026*
+*Last updated: March 28, 2026*
 
 ---
 
 ## How it works — end to end
 
-The full user journey runs in four steps:
+The full user journey runs in six steps:
 
 ```
-[ Step 1 ]              [ Step 2 ]              [ Step 3 ]              [ Step 4 ]
-  Chrome Extension  →     Classifier        →     Design Brief      →     Renovation Visualiser
-  (data collection)       (AI analysis)           (renovation concept)    (AI image generation)
-  automatic               automatic               manual trigger          manual trigger
+[ Step 1 ]              [ Step 2 ]                    [ Step 3 ]              [ Step 4 + 5 (parallel) ]
+  Chrome Extension  →     Classifier              →     Design Brief      →     Renovation Visualiser
+  (data collection)       + Architectural Reading       (renovation concept)    + Cost Estimator
+  automatic               automatic                    manual trigger          manual trigger
 ```
 
-Each step hands off to the next via a shared Supabase record. Nothing is coupled directly — the extension just creates a row, the classifier fills it in, the brief interprets it, the visualiser follows it.
+After the Design Brief, the **Renovation Visualiser** and **Cost Estimator** can run in parallel — neither depends on the other. Both depend on the Classifier + Design Brief.
+
+Each step hands off to the next via a shared Supabase record. Nothing is coupled directly — the extension just creates a row, the classifier fills it in, the brief interprets it, the visualiser and cost estimator follow it.
 
 ---
 
@@ -80,6 +82,8 @@ The Classifier is the first AI step. It looks at the full listing — address, d
 
 ### What it produces
 
+**Call 1 — Classification** (unchanged):
+
 **Archetype** — a building type from a vocabulary of 18 UK housing categories (Victorian terrace, interwar semi, 1960s bungalow, period cottage, ex-council, new build, etc.) with:
 - Era (e.g. *"1960–1979"*)
 - Construction method (e.g. *"Cavity brick walls, concrete tile roof"*)
@@ -94,41 +98,61 @@ The Classifier is the first AI step. It looks at the full listing — address, d
 
 **Summary** — 2–3 sentences of plain-English architectural reading of the property.
 
+**Call 2 — Architectural Reading** (new):
+
+A second Claude vision call that runs immediately after classification, using the same images. This produces a deep professional reading:
+
+- **Building narrative** — 3–4 paragraphs in an architect's voice, referencing specific photos by index
+- **Construction inferences** — wall type, roof structure, foundations, insulation, windows, heating — what's likely behind the walls based on the building's era
+- **Period features** — every visible feature plus features likely hidden (original floorboards under carpet, shutters painted shut, fireplaces behind boarding)
+- **Issues identified** — damp staining, cracked render, dated electrics, settlement cracks — with severity, evidence, and implications
+- **Unknowns** — 5–8 things that matter but cannot be assessed from listing photos (electrics age, asbestos, drainage, etc.)
+
+### Why two calls instead of one
+
+The classification (quick structured categories) and architectural reading (long-form professional prose) have different output characteristics. Putting both in one call creates output competition — the model either rushes the classification to get to the prose, or truncates the reading to stay within token budget. Two separate calls ensure both outputs are high quality with zero regression risk on the existing classification.
+
 ### How it works
 
 ```
 Listing JSON arrives at POST /reports
     |
     v
-Classifier downloads all listing photos
+Classifier downloads all listing photos (max 12)
     |
     v
-Sends a single multimodal message to Claude:
+=== CALL 1: Classification ===
+Sends multimodal message to Claude:
     - property metadata (text)
     - all photos (vision)
-    - menu of 18 archetypes to choose from
+    - menu of 18 archetypes
     - instructions for image-by-image classification
     |
     v
 Claude responds with structured JSON
+Response validated → written to results.classification
     |
     v
-Response validated and written to:
-    results.classification = { archetype, images[], summary }
+=== CALL 2: Architectural Reading ===
+Sends second multimodal message to Claude:
+    - same photos
+    - the classifier's archetype + image observations (as context)
+    - instructions for deep building reading
+    |
+    v
+Claude responds with structured JSON
+Response validated → attached to results.classification.architecturalReading
 ```
 
-The classifier runs once per report, automatically, the moment a listing is submitted.
+Both calls run automatically when a report is created. The architectural reading is non-fatal — if it fails, the classification still stands.
 
 ### Known limitations
 
-The classifier reads what is visible in listing photos but does not go deeper into:
-
-- **Construction reality** — wall type (solid brick vs cavity vs timber frame), roof structure, foundation, likely insulation spec. The archetype gives a broad hint but not a surveyor-level reading.
 - **Site and context** — orientation, aspect, neighbouring buildings, street character, conservation area status, topography. All invisible from listing photos alone.
 - **Condition beneath the surface** — electrics age, plumbing, boiler type, window spec — things that don't appear in estate agent photography.
-- **Period features granularity** — it can note "cornicing visible" but doesn't distinguish original lime plaster from a modern replica, or assess structural significance.
+- **Period features granularity** — the reading can note features and infer hidden ones, but cannot distinguish original lime plaster from a modern replica without a site visit.
 
-These gaps matter downstream. A shallow classification produces shallow renovation prompts.
+The architectural reading significantly reduces these gaps compared to the original 2–3 sentence summary. The construction inferences and issues identified feed directly into the Cost Estimator for more grounded estimates.
 
 ---
 
@@ -256,33 +280,97 @@ Standalone prompts are technically correct but aesthetically safe. The Design Br
 **3. Camera angle is inherited, not corrected**
 The visualiser works with whatever photos the estate agent took. If the living room was photographed from a dark corner with a wide-angle lens, the renovated version is still shot from that same dark corner. The composition problem is baked in before the model touches it. A beautifully renovated space can still look underwhelming if the angle was bad to begin with.
 
-**4. Classifier depth limits prompt quality**
-The renovation prompt is only as good as the classifier's observations. If the classifier notes "dated kitchen units" but doesn't record that the kitchen faces north, has a low ceiling, original quarry tile floor, and an Aga position — the prompt writer has nothing to work with beyond the obvious. Shallow input produces shallow output.
+**4. Classifier depth limits prompt quality** ✅ *Partially addressed by Architectural Reading*
+The renovation prompt is only as good as the classifier's observations. The expanded architectural reading now provides construction inferences, period features, and identified issues — giving the prompt writer much more to work with. However, the reading still can't detect what's not visible in photos (orientation, hidden services, structural condition behind render).
 
 ---
 
-## How the four steps relate
+## Step 5 — Cost Estimator Agent
+
+### What it does
+
+The Cost Estimator is a text-only Claude call that produces the financial chapter of the report — budget ranges, value gap analysis, and phased costs for a residential renovation project. It reasons about UK construction costs using the evidence from the Classifier's architectural reading and the scope from the Design Brief.
+
+This is a **desktop appraisal, not a tender**. The report says so explicitly.
+
+### What it receives
+
+From the **Classifier**: archetype (era, construction type) + full architectural reading (construction inferences, issues identified, period features).
+From the **Design Brief**: transformation strategy, design language (palette, materials, mood), concept statement.
+From the **listing**: asking price, address, property type, bedrooms, bathrooms.
+
+### What it produces
+
+- **Budget breakdown** — by category (Structural & Shell, M&E, Finishes, Kitchen, Bathrooms, External Works, etc.) with low/high ranges and notes
+- **Total envelope** — overall renovation cost range
+- **Price gap analysis** — asking price vs estimated post-works value vs total investment (purchase + renovation)
+- **Phased budget** — Move-in basics (what must be done first), Year 1–2 (main programme), Complete vision (everything to full spec)
+- **Cost drivers** — the 3–4 biggest factors that swing the total (e.g. roof condition, structural unknowns)
+- **Key assumptions** — explicitly listed so the reader knows what was assumed
+- **Confidence statement** — honest disclaimer about reliability
+
+### How it works
 
 ```
-[ Step 1 ]                [ Step 2 ]                [ Step 3 ]                [ Step 4 ]
-Chrome Extension          Classifier                Design Brief              Renovation Visualiser
-----------------          ----------                ------------              ---------------------
-Runs on every             Runs automatically        Runs on demand            Runs on demand
-Rightmove page            when report is created    when user triggers it     when user triggers it
-
-Reads page data      ->   Identifies archetype  ->  Reads archetype +     ->  Reads brief's palette,
-Stores locally            Classifies images         image classifications     materials, mood, and
-POST /reports             Writes:                   Creates unified           per-image guidance
-Opens report page         results.classification    renovation concept        Crafts renovation
-                                                    (palette, materials,      prompts via Claude
-                                                    mood, strategy)           Generates images via
-                                                    Writes:                   Nano Banana (fal.ai)
-                                                    results.design_brief      Writes:
-                                                                              results.renovation_
-                                                                              visualisation
+User clicks "Run Cost Estimate" on /cost-estimate/{reportId}
+    |
+    v
+Agent reads results.classification.architecturalReading
+         + results.design_brief from the report
+    |
+    v
+Sends a single text message to Claude:
+    - property metadata (address, price, type, beds/baths)
+    - archetype + construction inferences + issues
+    - design brief (strategy, palette, materials, mood)
+    |
+    v
+Claude responds with structured JSON
+    |
+    v
+Response validated with Zod and written to:
+    results.cost_estimate = { budgetBreakdown[], totalEnvelope, priceGap, phasedBudget, ... }
 ```
 
-The Classifier is a prerequisite for both the Design Brief and the Visualiser. The Design Brief is optional for the Visualiser — without it, the visualiser falls back to standalone mode with hardcoded image selection. With it, every image is prompted within a shared design language.
+Cost is ~$0.01 per report (single text call, no vision).
+
+### Regional awareness
+
+The estimator infers the region from the address and adjusts:
+- **London and South East**: highest rates
+- **South West, Wales, North**: typically 15–30% lower
+- **Rural areas**: lower labour rates but potentially higher material delivery costs
+
+### Known limitations
+
+- **No cost database** — uses Claude's training knowledge, not live material prices. Reasonable ranges, not precise quotes.
+- **No site visit** — cannot assess structural condition behind render, verify electrics age, or check drainage.
+- **Comparable sales** — currently not available (future: from area enrichment). Post-works value is estimated from archetype + region.
+- **Specification drift** — the brief's "mood" and "materials" language is interpreted, not priced line-by-line.
+
+---
+
+## How the steps relate
+
+```
+[ Step 1 ]                [ Step 2 ]                      [ Step 3 ]               [ Step 4 + 5 ]
+Chrome Extension          Classifier                      Design Brief             Parallel agents
+----------------          ----------                      ------------             ---------------
+Runs on every             Runs automatically               Runs on demand           Runs on demand
+Rightmove page            when report is created           user triggers it         user triggers
+
+Reads page data      ->   Call 1: archetype +          ->  Reads archetype,     ->  Visualiser: images
+Stores locally            image classification              image observations       + brief → fal.ai
+POST /reports             Call 2: architectural reading    Creates unified
+Opens report page         Writes:                          renovation concept       Cost Estimator:
+                          results.classification           (palette, materials,     reading + brief
+                          └── .architecturalReading        mood, strategy)          → budget ranges
+                                                           Writes:
+                                                           results.design_brief     Both write to
+                                                                                    results.* keys
+```
+
+The **Classifier** (both calls) is a prerequisite for everything. The **Design Brief** is a prerequisite for the **Cost Estimator** (required) and the **Visualiser** (optional — falls back to standalone mode without it). The **Visualiser** and **Cost Estimator** are independent and can run in parallel.
 
 ---
 
@@ -290,25 +378,32 @@ The Classifier is a prerequisite for both the Design Brief and the Visualiser. T
 
 | Step | Purpose | Model | Provider | Cost |
 |------|---------|-------|----------|------|
-| Classifier | Vision analysis of listing photos | `claude-sonnet-4-20250514` | Anthropic | Per token |
+| Classifier (Call 1) | Archetype + image classification | `claude-sonnet-4-20250514` | Anthropic | ~$0.03–0.05 / report |
+| Classifier (Call 2) | Architectural reading | `claude-sonnet-4-20250514` | Anthropic | ~$0.03–0.05 / report |
 | Design Brief | Creating unified renovation concept | `claude-sonnet-4-20250514` | Anthropic | ~$0.01 / report |
 | Renovation Visualiser | Crafting renovation prompts | `claude-sonnet-4-20250514` | Anthropic | Per token |
 | Renovation Visualiser | Generating "after" images (production) | `nano-banana-pro` → Gemini 3 Pro Image | fal.ai | $0.15 / image |
 | Renovation Visualiser | Generating "after" images (cheaper alt) | `nano-banana-2` → Gemini 3.1 Flash Image | fal.ai | $0.08 / image |
+| Renovation Visualiser | Post-production polish (optional) | `nano-banana-pro` | fal.ai | $0.15 / image |
+| Cost Estimator | Desktop cost appraisal | `claude-sonnet-4-20250514` | Anthropic | ~$0.01 / report |
 
 Nano Banana is a Google Gemini image model served via the fal.ai platform. Both variants accept an original photo + a text instruction and return a photo-realistic edited version. The model understands spatial relationships, lighting, and scene structure — it modifies the image rather than replacing it wholesale.
 
-The default production model is `nano-banana-pro`. At 5 images per report that's $0.75 per report.
+The default production model is `nano-banana-pro`. At 5 images per report (with post-production) that's $1.50 per report for images.
+
+**Total per report**: ~$0.55–0.90 without post-production, ~$1.05–1.65 with post-production.
 
 ---
 
 ## Storage
 
-Both agents write to the same Supabase row. The `results` column is a JSON object where each agent owns a key:
+All agents write to the same Supabase row. The `results` column is a JSON object where each agent owns a key:
 
 ```
 piega_reports.results
-├── classification              <- written by Classifier
-├── design_brief                <- written by Design Brief
-└── renovation_visualisation    <- written by Renovation Visualiser
+├── classification                     <- written by Classifier
+│   └── architecturalReading           <- written by Architectural Reading (Call 2)
+├── design_brief                       <- written by Design Brief
+├── renovation_visualisation           <- written by Renovation Visualiser
+└── cost_estimate                      <- written by Cost Estimator
 ```

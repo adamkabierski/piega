@@ -11,7 +11,7 @@
 import { StateGraph, START, END } from "@langchain/langgraph";
 
 import { ReportState, type ReportStateType } from "./state.js";
-import { runClassifier } from "../agents/classifier.js";
+import { runClassifier, runArchitecturalReading } from "../agents/classifier.js";
 import { mergeAgentResult, updateReportStatus, appendReportError } from "../db/index.js";
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -38,15 +38,58 @@ async function classifierNode(state: ReportStateType): Promise<Partial<ReportSta
     return { errors: [result.error], currentStep: "classifier_error" };
   }
 
-  // Write to Supabase + mark complete
+  // Write classification to Supabase immediately (before architectural reading)
   if (state.reportId && result.classification) {
     await mergeAgentResult(state.reportId, "classification", result.classification).catch(console.error);
-    await updateReportStatus(state.reportId, "complete").catch(console.error);
   }
 
   return {
     classification: result.classification,
     currentStep: "classifier_done",
+  };
+}
+
+/**
+ * Architectural Reading Node
+ * Second vision call — deep professional reading of the building.
+ * Runs after classifier, attaches result to classification.architecturalReading.
+ */
+async function architecturalReadingNode(state: ReportStateType): Promise<Partial<ReportStateType>> {
+  console.log("[graph] Running architectural reading node...");
+
+  if (!state.classification || !state.listing) {
+    console.warn("[graph] Skipping architectural reading — no classification or listing");
+    // Not an error — mark complete anyway
+    if (state.reportId) {
+      await updateReportStatus(state.reportId, "complete").catch(console.error);
+    }
+    return { currentStep: "architectural_reading_skipped" };
+  }
+
+  const result = await runArchitecturalReading({
+    listing: state.listing,
+    classification: state.classification,
+  });
+
+  // Attach to existing classification
+  const enrichedClassification = {
+    ...state.classification,
+    architecturalReading: result.architecturalReading ?? undefined,
+  };
+
+  // Write enriched classification to Supabase
+  if (state.reportId) {
+    await mergeAgentResult(state.reportId, "classification", enrichedClassification).catch(console.error);
+    await updateReportStatus(state.reportId, "complete").catch(console.error);
+  }
+
+  if (result.error) {
+    console.warn(`[graph] Architectural reading had error (non-fatal): ${result.error}`);
+  }
+
+  return {
+    classification: enrichedClassification,
+    currentStep: "architectural_reading_done",
   };
 }
 
@@ -57,16 +100,18 @@ async function classifierNode(state: ReportStateType): Promise<Partial<ReportSta
 /**
  * Build the report generation graph
  *
- * Phase 1 (current): Classifier only
- *   START → Classifier → END
+ * Phase 1: Classifier → Architectural Reading
+ *   START → Classifier → Architectural Reading → END
  *
- * Future phases will add building reader, area analyst, renovation planner etc.
+ * Future phases will add area analyst, renovation planner etc.
  */
 export function buildReportGraph() {
   const graph = new StateGraph(ReportState)
     .addNode("classifier", classifierNode)
+    .addNode("architectural_reading", architecturalReadingNode)
     .addEdge(START, "classifier")
-    .addEdge("classifier", END);
+    .addEdge("classifier", "architectural_reading")
+    .addEdge("architectural_reading", END);
 
   return graph.compile();
 }

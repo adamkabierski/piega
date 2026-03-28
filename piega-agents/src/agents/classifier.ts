@@ -10,12 +10,16 @@ import { z } from "zod";
 import { HumanMessage, SystemMessage } from "@langchain/core/messages";
 
 import type { ParsedListing } from "../types/listing.js";
-import type { ClassificationResult, ImageClassification } from "../types/agents.js";
-import type { PropertyArchetype, ImageSubject, UsefulnessLevel } from "../types/common.js";
+import type { ClassificationResult, ArchitecturalReading, ImageClassification } from "../types/agents.js";
+import type { PropertyArchetype, ImageSubject, UsefulnessLevel, ConfidenceLevel } from "../types/common.js";
 import { createVisionModel, validateEnv } from "../utils/llm.js";
 import { fetchListingImages, type Base64Image } from "../utils/images.js";
 import { parseStructuredOutput } from "../utils/parsing.js";
 import { CLASSIFIER_SYSTEM_PROMPT, buildClassifierUserMessage } from "../prompts/classifier.js";
+import {
+  ARCHITECTURAL_READING_SYSTEM_PROMPT,
+  buildArchitecturalReadingUserPrompt,
+} from "../prompts/architecturalReading.js";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // ZOD SCHEMAS for structured output validation
@@ -209,6 +213,169 @@ export async function runClassifier(input: ClassifierInput): Promise<ClassifierO
     console.error("[classifier] Error:", error);
     return {
       classification: null,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// ARCHITECTURAL READING — second vision call
+// ═══════════════════════════════════════════════════════════════════════════
+
+const ConfidenceLevelSchema = z.enum(["high", "medium", "low"]);
+
+const ArchitecturalReadingSchema = z.object({
+  buildingNarrative: z.string(),
+  constructionInferences: z.object({
+    wallType: z.string(),
+    roofStructure: z.string(),
+    foundations: z.string(),
+    insulation: z.string(),
+    windowsAndDoors: z.string(),
+    heatingAndServices: z.string(),
+    confidence: ConfidenceLevelSchema,
+  }),
+  periodFeatures: z.array(
+    z.object({
+      feature: z.string(),
+      status: z.string(),
+      confidence: ConfidenceLevelSchema,
+      recommendation: z.string(),
+    })
+  ),
+  issuesIdentified: z.array(
+    z.object({
+      issue: z.string(),
+      severity: z.enum(["minor", "moderate", "significant", "unknown"]),
+      evidence: z.string(),
+      implication: z.string(),
+    })
+  ),
+  unknowns: z.array(z.string()),
+});
+
+export interface ArchitecturalReadingInput {
+  listing: ParsedListing;
+  classification: ClassificationResult;
+}
+
+export interface ArchitecturalReadingOutput {
+  architecturalReading: ArchitecturalReading | null;
+  error?: string;
+}
+
+/**
+ * Run the architectural reading — a second vision call that produces
+ * a deep professional reading of the building.
+ *
+ * Requires the existing classification so it can reference the
+ * classifier's image notes and archetype in its prompts.
+ */
+export async function runArchitecturalReading(
+  input: ArchitecturalReadingInput,
+): Promise<ArchitecturalReadingOutput> {
+  const { listing, classification } = input;
+
+  validateEnv();
+
+  console.log(`[architectural-reading] Starting for ${listing.address}`);
+  console.log(`[architectural-reading] Archetype: ${classification.archetype.displayName}`);
+
+  // 1. Fetch images (same set as classifier)
+  console.log("[architectural-reading] Fetching images...");
+  const images = await fetchListingImages(listing, {
+    maxImages: 12,
+    includeFloorplans: false, // no value for architectural reading
+    concurrency: 3,
+  });
+
+  if (images.length === 0) {
+    console.warn("[architectural-reading] No images — cannot produce reading");
+    return {
+      architecturalReading: null,
+      error: "No images could be fetched from the listing",
+    };
+  }
+
+  // 2. Build the prompt
+  const userMessageText = buildArchitecturalReadingUserPrompt({
+    listing,
+    classification,
+  });
+
+  // 3. Build message content with images
+  const messageContent: Array<
+    | { type: "text"; text: string }
+    | { type: "image"; source: { type: "base64"; media_type: string; data: string } }
+  > = [];
+
+  for (const img of images) {
+    messageContent.push({
+      type: "image",
+      source: {
+        type: "base64",
+        media_type: img.mediaType,
+        data: img.base64,
+      },
+    });
+    messageContent.push({
+      type: "text",
+      text: `[Image ${img.index}: ${img.caption}]`,
+    });
+  }
+
+  messageContent.push({
+    type: "text",
+    text: userMessageText,
+  });
+
+  // 4. Create model — higher token budget for prose output
+  const model = createVisionModel({ temperature: 0.3, maxTokens: 6144 });
+
+  console.log("[architectural-reading] Sending to Claude...");
+  const startTime = Date.now();
+
+  try {
+    const response = await model.invoke([
+      new SystemMessage(ARCHITECTURAL_READING_SYSTEM_PROMPT),
+      new HumanMessage({ content: messageContent }),
+    ]);
+
+    const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+    console.log(`[architectural-reading] Response received in ${elapsed}s`);
+
+    // 5. Parse
+    const responseText =
+      typeof response.content === "string"
+        ? response.content
+        : JSON.stringify(response.content);
+
+    const parsed = parseStructuredOutput(responseText, ArchitecturalReadingSchema);
+
+    const reading: ArchitecturalReading = {
+      buildingNarrative: parsed.buildingNarrative,
+      constructionInferences: {
+        ...parsed.constructionInferences,
+        confidence: parsed.constructionInferences.confidence as ConfidenceLevel,
+      },
+      periodFeatures: parsed.periodFeatures.map((pf) => ({
+        ...pf,
+        confidence: pf.confidence as ConfidenceLevel,
+      })),
+      issuesIdentified: parsed.issuesIdentified,
+      unknowns: parsed.unknowns,
+    };
+
+    console.log(
+      `[architectural-reading] Complete — ${reading.periodFeatures.length} features, ` +
+        `${reading.issuesIdentified.length} issues, ${reading.unknowns.length} unknowns`,
+    );
+
+    return { architecturalReading: reading };
+  } catch (error) {
+    console.error("[architectural-reading] Error:", error);
+    return {
+      architecturalReading: null,
       error: error instanceof Error ? error.message : String(error),
     };
   }

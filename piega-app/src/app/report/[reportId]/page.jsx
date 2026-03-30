@@ -946,7 +946,7 @@ export default function ReportPage() {
             }}>
               <img src={heroImage} alt="Property"
                 style={{
-                  width: "100%", aspectRatio: "2.2/1",
+                  width: "100%",
                   objectFit: "cover", display: "block",
                 }}
               />

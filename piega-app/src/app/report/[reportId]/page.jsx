@@ -207,52 +207,97 @@ const BUDGET_COLOURS = [
   "#8A8580", "#6B6560", "#A0927E", "#C49A7A",
 ];
 
-/* ─── Line-by-line cost breakdown (handcrafted-style thin bars) ──────── */
+/* ─── Cost breakdown — generous editorial rows + stacked bar ─────────── */
 
-function CostBreakdownLines({ breakdown }) {
+function CostBreakdownRows({ breakdown }) {
   if (!breakdown?.length) return null;
-  const maxMid = Math.max(...breakdown.map((b) => (b.low + b.high) / 2));
-  if (!maxMid) return null;
 
   return (
-    <div style={{
-      background: R.cardBg, borderRadius: 4,
-      border: `1px solid ${R.border}`,
-      padding: "16px 20px", marginBottom: 20,
-    }}>
-      {breakdown.map((b, i) => {
-        const mid = (b.low + b.high) / 2;
-        const pct = (mid / maxMid) * 100;
-        const colour = BUDGET_COLOURS[i % BUDGET_COLOURS.length];
-        return (
-          <div key={i} style={{
-            display: "flex", alignItems: "center",
-            marginBottom: i < breakdown.length - 1 ? 8 : 0,
-          }}>
+    <div style={{ marginBottom: 12 }}>
+      {breakdown.map((b, i) => (
+        <div key={i} style={{
+          display: "flex", justifyContent: "space-between",
+          alignItems: "baseline", padding: "16px 0",
+          borderBottom: i < breakdown.length - 1 ? `1px solid ${R.border}` : "none",
+        }}>
+          <div style={{ flex: 1, minWidth: 0, paddingRight: 16 }}>
             <div style={{
-              width: 140, flexShrink: 0,
-              fontFamily: "'Inter', sans-serif", fontSize: 10,
-              color: R.textMuted, letterSpacing: "0.01em",
+              fontFamily: "'EB Garamond', serif", fontSize: 16,
+              color: R.text, lineHeight: 1.35,
             }}>
               {b.category}
             </div>
-            <div style={{ flex: 1, padding: "0 12px" }}>
+            {b.notes && (
               <div style={{
-                height: 3, borderRadius: 2,
-                background: colour, opacity: 0.45,
-                width: `${pct}%`, minWidth: 4,
-              }} />
-            </div>
-            <div style={{
-              width: 80, textAlign: "right", flexShrink: 0,
-              fontFamily: "'Bebas Neue', sans-serif", fontSize: 12,
-              letterSpacing: "0.02em", color: colour,
-            }}>
-              £{Math.round(b.low / 1000)}k–£{Math.round(b.high / 1000)}k
-            </div>
+                fontFamily: "'EB Garamond', serif", fontSize: 12,
+                fontStyle: "italic", color: R.textLight,
+                marginTop: 3, lineHeight: 1.4,
+              }}>
+                {b.notes}
+              </div>
+            )}
           </div>
-        );
-      })}
+          <div style={{
+            fontFamily: "'Playfair Display', serif", fontSize: 16,
+            fontWeight: 600, color: R.text,
+            whiteSpace: "nowrap", flexShrink: 0,
+          }}>
+            £{Math.round(b.low / 1000)}k–£{Math.round(b.high / 1000)}k
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ─── Stacked proportional bar (where the weight sits at a glance) ───── */
+
+function CostStackedBar({ breakdown }) {
+  if (!breakdown?.length) return null;
+  const totals = breakdown.map((b) => (b.low + b.high) / 2);
+  const sum = totals.reduce((a, c) => a + c, 0);
+  if (!sum) return null;
+
+  return (
+    <div style={{ margin: "32px 0 12px" }}>
+      {/* Bar */}
+      <div style={{ display: "flex", height: 28, overflow: "hidden" }}>
+        {breakdown.map((b, i) => {
+          const flex = totals[i] / sum;
+          return (
+            <div key={i} style={{
+              flex, height: "100%",
+              background: BUDGET_COLOURS[i % BUDGET_COLOURS.length],
+            }} />
+          );
+        })}
+      </div>
+      {/* Labels beneath */}
+      <div style={{ display: "flex", marginTop: 9 }}>
+        {breakdown.map((b, i) => {
+          const flex = totals[i] / sum;
+          return (
+            <div key={i} style={{
+              flex, paddingRight: 10, minWidth: 0, overflow: "hidden",
+            }}>
+              <div style={{
+                fontFamily: "'Bebas Neue', sans-serif", fontSize: 13,
+                letterSpacing: "0.08em", color: R.text,
+                lineHeight: 1.2, whiteSpace: "nowrap",
+                overflow: "hidden", textOverflow: "ellipsis",
+              }}>
+                {b.category}
+              </div>
+              <div style={{
+                fontFamily: "'EB Garamond', serif", fontSize: 11,
+                color: R.textMuted, lineHeight: 1.4,
+              }}>
+                £{Math.round(b.low / 1000)}k–£{Math.round(b.high / 1000)}k
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -1017,38 +1062,36 @@ export default function ReportPage() {
               </Reveal>
             )}
 
-            {/* Line-by-line cost breakdown */}
+            {/* Cost breakdown — generous rows */}
             <Reveal>
-              <div style={{
-                fontSize: 10, fontWeight: 600, letterSpacing: 1.5,
-                textTransform: "uppercase", color: R.textLight, marginBottom: 12,
-              }}>
-                Budget Breakdown
-              </div>
-              <CostBreakdownLines breakdown={costEstimate.budgetBreakdown} />
+              <CostBreakdownRows breakdown={costEstimate.budgetBreakdown} />
             </Reveal>
 
-            {/* Total envelope — the big number (Playfair Display serif) */}
+            {/* Stacked proportional bar */}
+            <Reveal>
+              <CostStackedBar breakdown={costEstimate.budgetBreakdown} />
+            </Reveal>
+
+            {/* Total envelope — the BIG number (Bebas Neue, demo-style) */}
             {costEstimate.totalEnvelope && (
               <Reveal>
-                <div style={{ textAlign: "center", padding: "32px 0 8px" }}>
+                <div style={{
+                  margin: "40px 0", padding: "32px 0",
+                  borderTop: `1px solid ${R.border}`,
+                  borderBottom: `1px solid ${R.border}`,
+                }}>
                   <div style={{
-                    fontSize: 10, letterSpacing: 1.5, textTransform: "uppercase",
-                    color: R.textLight, marginBottom: 10,
-                  }}>
-                    Total Renovation Estimate
-                  </div>
-                  <div style={{
-                    fontFamily: "'Playfair Display', serif",
-                    fontSize: "clamp(32px, 6vw, 48px)",
-                    fontWeight: 400, letterSpacing: 1,
-                    color: R.text, lineHeight: 1,
+                    fontFamily: "'Bebas Neue', sans-serif",
+                    fontSize: "clamp(52px, 10vw, 96px)",
+                    letterSpacing: "0.02em", color: R.text,
+                    lineHeight: 1,
                   }}>
                     {fmtK(costEstimate.totalEnvelope.low)}–{fmtK(costEstimate.totalEnvelope.high)}
                   </div>
                   <div style={{
                     fontFamily: "'EB Garamond', serif",
-                    fontSize: 13, fontStyle: "italic",
+                    fontSize: 12, letterSpacing: "0.14em",
+                    textTransform: "uppercase",
                     color: R.textLight, marginTop: 8,
                   }}>
                     ten-year cost of ownership beyond purchase

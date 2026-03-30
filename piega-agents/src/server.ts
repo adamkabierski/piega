@@ -18,7 +18,7 @@ import "dotenv/config";
 import express, { type Express } from "express";
 import cors from "cors";
 
-import { createReport, getReport, updateReportStatus, mergeAgentResult } from "./db/index.js";
+import { createReport, getReport, updateReportStatus, mergeAgentResult, mergePipelineCost } from "./db/index.js";
 import { generateReport } from "./graph/index.js";
 import { runRenovationVisualiser } from "./agents/renovationVisualiser.js";
 import { runDesignBrief } from "./agents/designBrief.js";
@@ -619,7 +619,7 @@ async function runDesignBriefPipeline(
   console.log(`[server] Starting design brief pipeline for report ${reportId}`);
 
   try {
-    const brief = await runDesignBrief({
+    const { result: brief, cost: briefCost } = await runDesignBrief({
       classification,
       listing: {
         address: listing.address ?? "Unknown address",
@@ -634,10 +634,11 @@ async function runDesignBriefPipeline(
     // Write result
     await mergeAgentResult(reportId, "design_brief", brief);
     await mergeAgentResult(reportId, "design_brief_status", "complete");
+    await mergePipelineCost(reportId, "design_brief", briefCost);
 
     console.log(
       `[server] Design brief complete for ${reportId}: strategy=${brief.transformationStrategy}, ` +
-        `${brief.imageSelections.filter((s) => s.use).length} images selected`,
+        `${brief.imageSelections.filter((s: { use: boolean }) => s.use).length} images selected, $${briefCost.cost.toFixed(4)}`,
     );
   } catch (err) {
     console.error(`[server] Design brief pipeline error for ${reportId}:`, err);
@@ -697,9 +698,17 @@ async function runVisualiserPipeline(
     // Final write with complete data
     await mergeAgentResult(reportId, "renovation_visualisation", output);
     await mergeAgentResult(reportId, "renovation_visualisation_status", "complete");
+    await mergePipelineCost(reportId, "renovation_visualiser", {
+      imageCost: output.totalCost,
+      llmCost: output.llmCost.cost,
+      inputTokens: output.llmCost.inputTokens,
+      outputTokens: output.llmCost.outputTokens,
+      cost: output.totalCost + output.llmCost.cost,
+      model: output.model,
+    });
 
     console.log(
-      `[server] Visualiser complete for ${reportId}: ${output.exteriors.length + output.interiors.length} images, $${output.totalCost.toFixed(2)}`
+      `[server] Visualiser complete for ${reportId}: ${output.exteriors.length + output.interiors.length} images, fal: $${output.totalCost.toFixed(2)}, llm: $${output.llmCost.cost.toFixed(4)}`
     );
   } catch (err) {
     console.error(`[server] Visualiser pipeline error for ${reportId}:`, err);
@@ -737,15 +746,16 @@ async function runCostEstimatePipeline(
       comparableSales: null, // future: from area enrichment
     };
 
-    const result = await runCostEstimator(costInput);
+    const { result, cost } = await runCostEstimator(costInput);
 
     // Write result
     await mergeAgentResult(reportId, "cost_estimate", result);
     await mergeAgentResult(reportId, "cost_estimate_status", "complete");
+    await mergePipelineCost(reportId, "cost_estimator", cost);
 
     console.log(
       `[server] Cost estimator complete for ${reportId}: ` +
-        `£${result.totalEnvelope.low.toLocaleString("en-GB")}–£${result.totalEnvelope.high.toLocaleString("en-GB")}`,
+        `£${result.totalEnvelope.low.toLocaleString("en-GB")}–£${result.totalEnvelope.high.toLocaleString("en-GB")}, $${cost.cost.toFixed(4)}`,
     );
   } catch (err) {
     console.error(`[server] Cost estimator pipeline error for ${reportId}:`, err);
@@ -796,18 +806,19 @@ async function runNarrativePipeline(
       bedrooms: listing.bedrooms ?? 0,
     };
 
-    const result = await runNarrativeWriter(narrativeInput);
+    const { result, cost } = await runNarrativeWriter(narrativeInput);
 
     // Write result
     await mergeAgentResult(reportId, "narrative", result);
     await mergeAgentResult(reportId, "narrative_status", "complete");
+    await mergePipelineCost(reportId, "narrative_writer", cost);
 
     const totalWords = Object.values(result)
       .join(" ")
       .split(/\s+/).length;
 
     console.log(
-      `[server] Narrative writer complete for ${reportId}: ${totalWords} words across 6 sections`,
+      `[server] Narrative writer complete for ${reportId}: ${totalWords} words, $${cost.cost.toFixed(4)}`,
     );
   } catch (err) {
     console.error(`[server] Narrative writer pipeline error for ${reportId}:`, err);

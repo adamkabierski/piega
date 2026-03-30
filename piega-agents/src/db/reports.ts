@@ -135,6 +135,48 @@ export async function mergeAgentResult(
   console.log(`[db] Merged "${agentKey}" into report ${reportId}`);
 }
 
+/**
+ * Deep-merge a single agent's cost into results.pipeline_costs.
+ *
+ * Unlike mergeAgentResult (which does a flat top-level spread),
+ * this preserves costs already written by other agents.
+ */
+export async function mergePipelineCost(
+  reportId: string,
+  agentName: string,
+  cost: unknown
+): Promise<void> {
+  const db = getSupabase();
+
+  const { data: current, error: readErr } = await db
+    .from("piega_reports")
+    .select("results")
+    .eq("id", reportId)
+    .single();
+
+  if (readErr) throw new Error(`Failed to read results: ${readErr.message}`);
+
+  const results = (current?.results as Record<string, unknown>) ?? {};
+  const existingCosts = (results.pipeline_costs as Record<string, unknown>) ?? {};
+
+  const merged = {
+    ...results,
+    pipeline_costs: {
+      ...existingCosts,
+      [agentName]: cost,
+    },
+  };
+
+  const { error: writeErr } = await db
+    .from("piega_reports")
+    .update({ results: merged })
+    .eq("id", reportId);
+
+  if (writeErr) throw new Error(`Failed to merge pipeline cost: ${writeErr.message}`);
+
+  console.log(`[db] Merged pipeline cost "${agentName}" into report ${reportId}`);
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // APPEND ERROR
 // ═══════════════════════════════════════════════════════════════════════════

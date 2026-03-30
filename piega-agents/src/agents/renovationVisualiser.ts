@@ -10,7 +10,8 @@
 
 import { HumanMessage, SystemMessage } from "@langchain/core/messages";
 
-import { createTextModel } from "../utils/llm.js";
+import { createTextModel, MODELS } from "../utils/llm.js";
+import { extractCost, sumCosts, type AgentCost } from "../utils/costTracker.js";
 import {
   generateRenovatedImage,
   ensureAccessibleUrl,
@@ -75,6 +76,7 @@ export interface RenovationVisualisationOutput {
   exteriors: VisualisationResult[];
   interiors: VisualisationResult[];
   totalCost: number;
+  llmCost: AgentCost;
   totalDurationMs: number;
   model: ImageModel;
 }
@@ -224,7 +226,7 @@ export function selectImagesForVisualisation(
  */
 export async function craftRenovationPrompt(
   req: VisualisationRequest,
-): Promise<string> {
+): Promise<{ prompt: string; cost: AgentCost }> {
   const model = createTextModel({ temperature: 0.4, maxTokens: 512 });
 
   // Use brief-guided prompting when a design brief is available
@@ -260,10 +262,11 @@ export async function craftRenovationPrompt(
   ]);
 
   const prompt = (response.content as string).trim();
+  const cost = extractCost(response, MODELS.default);
   console.log(
     `[visualiser] Prompt crafted for ${req.depicts} (${req.room ?? "exterior"}): ${prompt.slice(0, 80)}…`,
   );
-  return prompt;
+  return { prompt, cost };
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -277,9 +280,9 @@ async function processOneImage(
   req: VisualisationRequest,
   model: ImageModel,
   enablePostProduction: boolean = true,
-): Promise<VisualisationResult> {
+): Promise<{ result: VisualisationResult; cost: AgentCost }> {
   // Step 1: Claude crafts the prompt
-  const prompt = await craftRenovationPrompt(req);
+  const { prompt, cost: promptCost } = await craftRenovationPrompt(req);
 
   // Step 2: Ensure the image URL is accessible from fal.ai
   const accessibleUrl = await ensureAccessibleUrl(req.imageUrl);
@@ -312,15 +315,18 @@ async function processOneImage(
   }
 
   return {
-    imageIndex: req.imageIndex,
-    originalUrl: req.imageUrl,
-    renovatedUrl: finalUrl,
-    prePostProductionUrl,
-    depicts: req.depicts,
-    room: req.room,
-    type: req.type,
-    promptUsed: prompt,
-    model,
+    result: {
+      imageIndex: req.imageIndex,
+      originalUrl: req.imageUrl,
+      renovatedUrl: finalUrl,
+      prePostProductionUrl,
+      depicts: req.depicts,
+      room: req.room,
+      type: req.type,
+      promptUsed: prompt,
+      model,
+    },
+    cost: promptCost,
   };
 }
 
@@ -365,6 +371,7 @@ export async function runRenovationVisualiser(
         exteriors: [],
         interiors: [],
         totalCost: 0,
+        llmCost: { inputTokens: 0, outputTokens: 0, cost: 0, model: MODELS.default },
         totalDurationMs: Date.now() - startTime,
         model: cfg.model,
       };
@@ -405,6 +412,7 @@ export async function runRenovationVisualiser(
         exteriors: [],
         interiors: [],
         totalCost: 0,
+        llmCost: { inputTokens: 0, outputTokens: 0, cost: 0, model: MODELS.default },
         totalDurationMs: Date.now() - startTime,
         model: cfg.model,
       };
@@ -440,12 +448,14 @@ export async function runRenovationVisualiser(
 
   // 2. Process images (serially to avoid rate limits and for progressive updates)
   const results: VisualisationResult[] = [];
+  const promptCosts: AgentCost[] = [];
   let remaining = allRequests.length;
 
   for (const req of allRequests) {
     try {
-      const result = await processOneImage(req, cfg.model, cfg.enablePostProduction);
+      const { result, cost: pCost } = await processOneImage(req, cfg.model, cfg.enablePostProduction);
       results.push(result);
+      promptCosts.push(pCost);
       remaining--;
       onImageComplete?.(result, remaining);
       console.log(
@@ -467,17 +477,20 @@ export async function runRenovationVisualiser(
 
   // Post-production doubles the Nano Banana cost per image
   const costMultiplier = cfg.enablePostProduction ? 2 : 1;
+  const llmCost = sumCosts(promptCosts);
   const output: RenovationVisualisationOutput = {
     exteriors,
     interiors,
     totalCost: results.length * MODEL_COSTS[cfg.model] * costMultiplier,
+    llmCost,
     totalDurationMs: Date.now() - startTime,
     model: cfg.model,
   };
 
   const elapsed = (output.totalDurationMs / 1000).toFixed(1);
   console.log(
-    `[visualiser] Complete — ${results.length}/${totalImages} images, $${output.totalCost.toFixed(2)}, ${elapsed}s`,
+    `[visualiser] Complete — ${results.length}/${totalImages} images, ` +
+      `fal: $${output.totalCost.toFixed(2)}, llm: $${llmCost.cost.toFixed(4)}, ${elapsed}s`,
   );
 
   return output;

@@ -13,7 +13,8 @@
 import { z } from "zod";
 import { HumanMessage, SystemMessage } from "@langchain/core/messages";
 
-import { createTextModel, validateEnv } from "../utils/llm.js";
+import { createTextModel, validateEnv, MODELS } from "../utils/llm.js";
+import { extractCost, type AgentCost } from "../utils/costTracker.js";
 import { parseStructuredOutput } from "../utils/parsing.js";
 import {
   DESIGN_BRIEF_SYSTEM_PROMPT,
@@ -213,7 +214,7 @@ function normaliseDesignBrief(raw: Record<string, unknown>): Record<string, unkn
  */
 export async function runDesignBrief(
   input: DesignBriefInput,
-): Promise<DesignBriefResult> {
+): Promise<{ result: DesignBriefResult; cost: AgentCost }> {
   validateEnv();
 
   const { classification, listing } = input;
@@ -245,7 +246,8 @@ export async function runDesignBrief(
   ]);
 
   const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-  console.log(`[design-brief] Response received in ${elapsed}s`);
+  const cost = extractCost(response, MODELS.default);
+  console.log(`[design-brief] Response received in ${elapsed}s — ${cost.inputTokens} in / ${cost.outputTokens} out · $${cost.cost.toFixed(4)}`);
 
   // Parse + validate
   const responseText =
@@ -278,5 +280,5 @@ export async function runDesignBrief(
   );
   console.log(`[design-brief] Concept: ${brief.conceptStatement.slice(0, 120)}…`);
 
-  return brief;
+  return { result: brief, cost };
 }

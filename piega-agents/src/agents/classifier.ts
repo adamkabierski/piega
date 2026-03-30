@@ -12,7 +12,8 @@ import { HumanMessage, SystemMessage } from "@langchain/core/messages";
 import type { ParsedListing } from "../types/listing.js";
 import type { ClassificationResult, ArchitecturalReading, ImageClassification } from "../types/agents.js";
 import type { PropertyArchetype, ImageSubject, UsefulnessLevel, ConfidenceLevel } from "../types/common.js";
-import { createVisionModel, validateEnv } from "../utils/llm.js";
+import { createVisionModel, validateEnv, MODELS } from "../utils/llm.js";
+import { extractCost, sumCosts, type AgentCost } from "../utils/costTracker.js";
 import { fetchListingImages, type Base64Image } from "../utils/images.js";
 import { parseStructuredOutput } from "../utils/parsing.js";
 import { CLASSIFIER_SYSTEM_PROMPT, buildClassifierUserMessage } from "../prompts/classifier.js";
@@ -88,6 +89,7 @@ export interface ClassifierInput {
 
 export interface ClassifierOutput {
   classification: ClassificationResult | null;
+  cost?: AgentCost;
   error?: string;
 }
 
@@ -175,7 +177,8 @@ export async function runClassifier(input: ClassifierInput): Promise<ClassifierO
     ]);
 
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-    console.log(`[classifier] Response received in ${elapsed}s`);
+    const cost = extractCost(response, MODELS.vision);
+    console.log(`[classifier] Response received in ${elapsed}s — ${cost.inputTokens} in / ${cost.outputTokens} out · $${cost.cost.toFixed(4)}`);
 
     // 5. Parse the response
     const responseText = typeof response.content === "string" 
@@ -208,7 +211,7 @@ export async function runClassifier(input: ClassifierInput): Promise<ClassifierO
     console.log(`[classifier] Confidence: ${(result.archetype.confidenceScore * 100).toFixed(0)}%`);
     console.log(`[classifier] Summary: ${result.summary}`);
 
-    return { classification: result };
+    return { classification: result, cost };
   } catch (error) {
     console.error("[classifier] Error:", error);
     return {
@@ -261,6 +264,7 @@ export interface ArchitecturalReadingInput {
 
 export interface ArchitecturalReadingOutput {
   architecturalReading: ArchitecturalReading | null;
+  cost?: AgentCost;
   error?: string;
 }
 
@@ -342,7 +346,8 @@ export async function runArchitecturalReading(
     ]);
 
     const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-    console.log(`[architectural-reading] Response received in ${elapsed}s`);
+    const cost = extractCost(response, MODELS.vision);
+    console.log(`[architectural-reading] Response received in ${elapsed}s — ${cost.inputTokens} in / ${cost.outputTokens} out · $${cost.cost.toFixed(4)}`);
 
     // 5. Parse
     const responseText =
@@ -371,7 +376,7 @@ export async function runArchitecturalReading(
         `${reading.issuesIdentified.length} issues, ${reading.unknowns.length} unknowns`,
     );
 
-    return { architecturalReading: reading };
+    return { architecturalReading: reading, cost };
   } catch (error) {
     console.error("[architectural-reading] Error:", error);
     return {

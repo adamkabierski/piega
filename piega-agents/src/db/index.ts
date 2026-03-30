@@ -8,6 +8,7 @@ export {
   getReport,
   updateReportStatus,
   mergeAgentResult,
+  mergePipelineCost,
   appendReportError,
   type ReportRow,
   type ReportStatus,

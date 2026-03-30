@@ -16,7 +16,8 @@
 import { z } from "zod";
 import { HumanMessage, SystemMessage } from "@langchain/core/messages";
 
-import { createTextModel, validateEnv } from "../utils/llm.js";
+import { createTextModel, validateEnv, MODELS } from "../utils/llm.js";
+import { extractCost, type AgentCost } from "../utils/costTracker.js";
 import { parseStructuredOutput } from "../utils/parsing.js";
 import {
   NARRATIVE_WRITER_SYSTEM_PROMPT,
@@ -89,7 +90,7 @@ function normaliseNarrative(raw: Record<string, unknown>): Record<string, unknow
  */
 export async function runNarrativeWriter(
   input: NarrativeWriterInput,
-): Promise<NarrativeResult> {
+): Promise<{ result: NarrativeResult; cost: AgentCost }> {
   validateEnv();
 
   console.log(`[narrative-writer] Starting for ${input.address}`);
@@ -109,7 +110,8 @@ export async function runNarrativeWriter(
   ]);
 
   const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-  console.log(`[narrative-writer] Response received in ${elapsed}s`);
+  const cost = extractCost(response, MODELS.default);
+  console.log(`[narrative-writer] Response received in ${elapsed}s — ${cost.inputTokens} in / ${cost.outputTokens} out · $${cost.cost.toFixed(4)}`);
 
   // Parse response
   const responseText =
@@ -130,5 +132,5 @@ export async function runNarrativeWriter(
 
   console.log(`[narrative-writer] Done — ${totalWords} words across 6 sections`);
 
-  return result;
+  return { result, cost };
 }

@@ -12,7 +12,8 @@ import { StateGraph, START, END } from "@langchain/langgraph";
 
 import { ReportState, type ReportStateType } from "./state.js";
 import { runClassifier, runArchitecturalReading } from "../agents/classifier.js";
-import { mergeAgentResult, updateReportStatus, appendReportError } from "../db/index.js";
+import { mergeAgentResult, updateReportStatus, appendReportError, mergePipelineCost } from "../db/index.js";
+import { sumCosts } from "../utils/costTracker.js";
 
 // ═══════════════════════════════════════════════════════════════════════════
 // NODE FUNCTIONS
@@ -41,6 +42,9 @@ async function classifierNode(state: ReportStateType): Promise<Partial<ReportSta
   // Write classification to Supabase immediately (before architectural reading)
   if (state.reportId && result.classification) {
     await mergeAgentResult(state.reportId, "classification", result.classification).catch(console.error);
+    if (result.cost) {
+      await mergePipelineCost(state.reportId, "classifier", result.cost).catch(console.error);
+    }
   }
 
   return {
@@ -80,6 +84,9 @@ async function architecturalReadingNode(state: ReportStateType): Promise<Partial
   // Write enriched classification to Supabase
   if (state.reportId) {
     await mergeAgentResult(state.reportId, "classification", enrichedClassification).catch(console.error);
+    if (result.cost) {
+      await mergePipelineCost(state.reportId, "architectural_reading", result.cost).catch(console.error);
+    }
     await updateReportStatus(state.reportId, "complete").catch(console.error);
   }
 

@@ -14,7 +14,8 @@
 import { z } from "zod";
 import { HumanMessage, SystemMessage } from "@langchain/core/messages";
 
-import { createTextModel, validateEnv } from "../utils/llm.js";
+import { createTextModel, validateEnv, MODELS } from "../utils/llm.js";
+import { extractCost, type AgentCost } from "../utils/costTracker.js";
 import { parseStructuredOutput } from "../utils/parsing.js";
 import {
   COST_ESTIMATOR_SYSTEM_PROMPT,
@@ -187,7 +188,7 @@ function normaliseCostEstimate(raw: Record<string, unknown>): Record<string, unk
  */
 export async function runCostEstimator(
   input: CostEstimatorInput,
-): Promise<CostEstimateResult> {
+): Promise<{ result: CostEstimateResult; cost: AgentCost }> {
   validateEnv();
 
   console.log(`[cost-estimator] Starting for ${input.address}`);
@@ -209,7 +210,8 @@ export async function runCostEstimator(
   ]);
 
   const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-  console.log(`[cost-estimator] Response received in ${elapsed}s`);
+  const cost = extractCost(response, MODELS.default);
+  console.log(`[cost-estimator] Response received in ${elapsed}s — ${cost.inputTokens} in / ${cost.outputTokens} out · $${cost.cost.toFixed(4)}`);
 
   // Parse response
   const responseText =
@@ -231,5 +233,5 @@ export async function runCostEstimator(
       `Cost drivers: ${result.costDrivers.length}`,
   );
 
-  return result;
+  return { result, cost };
 }

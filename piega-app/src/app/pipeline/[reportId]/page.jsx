@@ -163,6 +163,41 @@ function getLockedReason(agent, report) {
     .join(" + ");
 }
 
+/* ── Cost Helpers ── */
+
+const COST_KEYS = {
+  classifier: ["classifier", "architectural_reading"],
+  design_brief: ["design_brief"],
+  visualiser: ["renovation_visualiser"],
+  cost_estimator: ["cost_estimator"],
+  narrative_writer: ["narrative_writer"],
+};
+
+function getAgentCost(agent, report) {
+  const costs = report?.results?.pipeline_costs;
+  if (!costs) return null;
+  const keys = COST_KEYS[agent.id];
+  if (!keys) return null;
+  let total = 0;
+  let found = false;
+  for (const k of keys) {
+    const c = costs[k];
+    if (c?.cost != null) { total += c.cost; found = true; }
+  }
+  return found ? total : null;
+}
+
+function getTotalPipelineCost(report) {
+  const costs = report?.results?.pipeline_costs;
+  if (!costs) return null;
+  let total = 0;
+  let found = false;
+  for (const v of Object.values(costs)) {
+    if (v?.cost != null) { total += v.cost; found = true; }
+  }
+  return found ? total : null;
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════
    SHARED UI COMPONENTS
    ═══════════════════════════════════════════════════════════════════════════ */
@@ -198,6 +233,22 @@ function Badge({ color, children }) {
       color, textTransform: "uppercase",
     }}>
       {children}
+    </span>
+  );
+}
+
+function CostBadge({ cost }) {
+  if (cost == null) return null;
+  const fmt = cost < 0.01 ? `$${cost.toFixed(4)}` : `$${cost.toFixed(2)}`;
+  return (
+    <span style={{
+      fontSize: 10,
+      fontFamily: "'SF Mono', 'Fira Code', Consolas, monospace",
+      color: C.accent,
+      opacity: 0.5,
+      letterSpacing: -0.3,
+    }}>
+      {fmt}
     </span>
   );
 }
@@ -264,6 +315,7 @@ function AgentCard({ agent, report, status, onTrigger, triggerError }) {
   const reportId = report?.id;
   const canTrigger = agent.triggerPath && (status === "idle" || status === "complete");
   const detailHref = agent.detailHref && status === "complete" ? agent.detailHref(reportId) : null;
+  const agentCost = getAgentCost(agent, report);
 
   return (
     <div style={{
@@ -274,7 +326,7 @@ function AgentCard({ agent, report, status, onTrigger, triggerError }) {
       opacity: status === "locked" ? 0.65 : 1,
       transition: "opacity 0.2s, border-color 0.2s",
     }}>
-      {/* Top row: icon + name + status badge */}
+      {/* Top row: icon + name + cost badge + status badge */}
       <div style={{
         display: "flex", alignItems: "center",
         justifyContent: "space-between", marginBottom: 8,
@@ -290,7 +342,10 @@ function AgentCard({ agent, report, status, onTrigger, triggerError }) {
             {agent.label}
           </span>
         </div>
-        <StatusBadge status={status} />
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <CostBadge cost={agentCost} />
+          <StatusBadge status={status} />
+        </div>
       </div>
 
       {/* Description */}
@@ -443,7 +498,7 @@ function PropertyHeader({ report }) {
           </div>
         </div>
 
-        {/* Progress counter */}
+        {/* Progress counter + total cost */}
         <div style={{
           display: "flex", flexDirection: "column",
           alignItems: "center", flexShrink: 0,
@@ -462,6 +517,20 @@ function PropertyHeader({ report }) {
           }}>
             Agents done
           </div>
+          {(() => {
+            const tc = getTotalPipelineCost(report);
+            if (tc == null) return null;
+            return (
+              <div style={{
+                marginTop: 6, fontSize: 10,
+                fontFamily: "'SF Mono', 'Fira Code', Consolas, monospace",
+                color: C.warmGrey, opacity: 0.6,
+                letterSpacing: -0.3,
+              }}>
+                ${tc < 0.01 ? tc.toFixed(4) : tc.toFixed(2)} total
+              </div>
+            );
+          })()}
         </div>
       </div>
 

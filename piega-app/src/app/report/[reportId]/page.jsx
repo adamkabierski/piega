@@ -782,101 +782,199 @@ export default function ReportPage() {
   const fmtGBP = (n) => `£${Math.round(n).toLocaleString("en-GB")}`;
   const fmtK = (n) => `£${Math.round(n / 1000)}k`;
 
+  /* ─── Build short-form name from address ─────────────────────────── */
+  // Try to extract a short name: first line, or street name, or first part
+  const shortName = (() => {
+    const addr = listing.address ?? "Property Report";
+    // If listing has a name field, use that
+    if (listing.name) return listing.name;
+    // Take first comma-separated part as the headline
+    const firstPart = addr.split(",")[0].trim();
+    // If it looks like a number + street, try to get just the street name portion
+    // but keep the full first part if it's already short
+    return firstPart.length <= 40 ? firstPart : firstPart.slice(0, 40) + "…";
+  })();
+
+  /* ─── Stats row data ─────────────────────────────────────────────── */
+  const stats = [
+    listing.askingPrice ? { v: fmtGBP(listing.askingPrice), s: "guide", c: R.clay } : null,
+    listing.bedrooms ? { v: `${listing.bedrooms} BED`, s: listing.bathrooms ? `${listing.bathrooms} bath` : "" } : null,
+    listing.propertyType ? { v: listing.propertyType.toUpperCase(), s: listing.tenure ?? "" } : null,
+    archetype?.era ? { v: archetype.era.toUpperCase(), s: archetype.displayName ?? "" } : null,
+  ].filter(Boolean);
+
+  /* ─── Postcode / location tag ────────────────────────────────────── */
+  const locationTag = (() => {
+    const parts = (listing.address ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+    // Try to get postcode (last part) + area (second-to-last)
+    if (parts.length >= 2) {
+      return parts.slice(-2).join(" · ").toUpperCase();
+    }
+    return parts[parts.length - 1]?.toUpperCase() ?? "";
+  })();
+
   return (
     <div style={{
       minHeight: "100vh", background: R.bg,
       fontFamily: "Inter, system-ui, sans-serif", color: R.text,
     }}>
 
-      {/* ═══════════════════════════════ HERO ═══════════════════════════════ */}
+      {/* ═══════════════════════════════ HERO ═══════════════════════════════
+         Dark header — no background image. Typographic hierarchy only.
+         Matches the handcrafted Woodbury / Cherry Cottage approach.
+      ═══════════════════════════════════════════════════════════════════ */}
       <div style={{
-        position: "relative", minHeight: 420,
-        background: "#1A1816", overflow: "hidden",
+        background: "#1A1816", position: "relative", overflow: "hidden",
       }}>
-        {heroImage && (
-          <img src={heroImage} alt="Property"
-            style={{
-              width: "100%", height: 420, objectFit: "cover",
-              display: "block", opacity: 0.5,
-            }}
-          />
-        )}
+        {/* Ghost watermark */}
         <div style={{
-          position: "absolute", inset: 0,
-          background: "linear-gradient(to top, rgba(26,24,22,0.95) 0%, rgba(26,24,22,0.25) 50%, rgba(26,24,22,0.55) 100%)",
-        }} />
-        <div style={{
-          position: "absolute", bottom: 0, left: 0, right: 0,
-          maxWidth: 680, margin: "0 auto", padding: "0 24px 44px",
+          position: "absolute", right: -20, top: "50%",
+          transform: "translateY(-50%)",
+          fontFamily: "'Bebas Neue', sans-serif",
+          fontSize: "clamp(90px, 16vw, 200px)",
+          color: "rgba(255,255,255,0.02)",
+          letterSpacing: "0.06em", pointerEvents: "none",
+          whiteSpace: "nowrap",
         }}>
+          {archetype?.displayName?.toUpperCase() ?? "HONEST"}
+        </div>
+
+        <div style={{ maxWidth: 680, margin: "0 auto", padding: "0 24px" }}>
+
           {/* Wordmark */}
-          <div style={{
-            fontFamily: "'Bebas Neue', sans-serif",
-            fontSize: 14, letterSpacing: 5,
-            color: "rgba(255,255,255,0.35)", marginBottom: 20,
-          }}>
-            PIEGA<span style={{ color: R.terracotta }}>.</span>
-          </div>
-
-          {/* Address */}
-          <h1 style={{
-            fontFamily: "'Playfair Display', serif",
-            fontSize: "clamp(26px, 5vw, 38px)", fontWeight: 400,
-            color: "#FAF8F5", margin: "0 0 8px", lineHeight: 1.15,
-          }}>
-            {listing.address ?? "Property Report"}
-          </h1>
-
-          {/* Price + meta strip */}
-          <div style={{
-            display: "flex", flexWrap: "wrap", alignItems: "center",
-            gap: 10, marginBottom: 20,
-          }}>
-            {listing.askingPrice && (
-              <span style={{
-                fontFamily: "'Bebas Neue', sans-serif",
-                fontSize: 20, letterSpacing: 1, color: R.clay,
-              }}>
-                {fmtGBP(listing.askingPrice)}
-              </span>
-            )}
-            {archetype && (
-              <span style={{
-                fontSize: 10, fontWeight: 600, letterSpacing: 1,
-                textTransform: "uppercase", color: "rgba(255,255,255,0.5)",
-                padding: "3px 10px", borderRadius: 3,
-                border: "1px solid rgba(255,255,255,0.15)",
-              }}>
-                {archetype.displayName}
-              </span>
-            )}
-            {[
-              listing.bedrooms ? `${listing.bedrooms} bed` : null,
-              listing.bathrooms ? `${listing.bathrooms} bath` : null,
-              listing.propertyType,
-            ].filter(Boolean).map((v, i) => (
-              <span key={i} style={{ fontSize: 12, color: "rgba(255,255,255,0.4)" }}>
-                · {v}
-              </span>
-            ))}
-          </div>
-
-          {/* Opening hook */}
-          {narrative?.openingHook && (
-            <div style={{
-              fontFamily: "'EB Garamond', serif",
-              fontSize: "clamp(17px, 2.2vw, 21px)",
-              fontStyle: "italic", lineHeight: 1.7,
-              color: "rgba(250,248,245,0.85)", maxWidth: 560,
+          <div style={{ padding: "24px 0 0" }}>
+            <span style={{
+              fontFamily: "'Playfair Display', serif",
+              fontSize: 14, fontStyle: "italic",
+              color: R.accent, letterSpacing: "0.02em",
             }}>
-              {narrative.openingHook}
-            </div>
-          )}
+              Piega
+            </span>
+          </div>
+
+          {/* Hero content */}
+          <div style={{ padding: "52px 0 0" }}>
+
+            {/* Context tag */}
+            {locationTag && (
+              <Reveal>
+                <div style={{
+                  fontFamily: "'Bebas Neue', sans-serif",
+                  fontSize: 11, letterSpacing: "0.24em",
+                  color: R.terracotta, marginBottom: 18,
+                }}>
+                  RIGHTMOVE · {locationTag}
+                </div>
+              </Reveal>
+            )}
+
+            {/* Property name — big Playfair headline */}
+            <Reveal delay={0.08}>
+              <h1 style={{
+                fontFamily: "'Playfair Display', serif",
+                fontSize: "clamp(34px, 5vw, 48px)", fontWeight: 400,
+                color: "#FAF8F5", margin: "0 0 8px", lineHeight: 1.08,
+              }}>
+                {shortName}
+              </h1>
+            </Reveal>
+
+            {/* Full address + meta as a Cap line */}
+            <Reveal delay={0.13}>
+              <div style={{
+                fontFamily: "'Inter', sans-serif", fontSize: 12,
+                color: "rgba(184,169,154,0.5)", marginTop: 8, lineHeight: 1.5,
+              }}>
+                {[
+                  listing.address,
+                  listing.bedrooms ? `${listing.bedrooms} bed` : null,
+                  listing.propertyType,
+                  listing.tenure,
+                ].filter(Boolean).join(" · ")}
+              </div>
+            </Reveal>
+
+            {/* Stats row — discrete Bebas Neue data points */}
+            {stats.length > 0 && (
+              <Reveal delay={0.2}>
+                <div style={{
+                  display: "flex", gap: 24, flexWrap: "wrap", marginTop: 24,
+                }}>
+                  {stats.map((s, i) => (
+                    <div key={i}>
+                      <div style={{
+                        fontFamily: "'Bebas Neue', sans-serif",
+                        fontSize: "clamp(17px, 2.8vw, 22px)",
+                        letterSpacing: "0.05em",
+                        color: s.c ?? "#FAF8F5",
+                      }}>
+                        {s.v}
+                      </div>
+                      {s.s && (
+                        <div style={{
+                          fontFamily: "'Inter', sans-serif",
+                          fontSize: 9, color: "rgba(184,169,154,0.4)",
+                          letterSpacing: "0.05em",
+                        }}>
+                          {s.s}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </Reveal>
+            )}
+          </div>
+
+          {/* Bottom spacing */}
+          <div style={{ height: 52 }} />
         </div>
       </div>
 
       {/* ═══════════════════════════════ BODY ═══════════════════════════════ */}
       <div style={{ maxWidth: 680, margin: "0 auto", padding: "0 24px" }}>
+
+        {/* ── Hero photo — in the content flow, not a background ── */}
+        {heroImage && (
+          <Reveal>
+            <div style={{
+              /* Break out to ~900px like the before/after sliders */
+              width: "min(900px, calc(100vw - 32px))",
+              marginLeft: "calc(50% - min(450px, calc(50vw - 16px)))",
+              marginTop: -1, marginBottom: 8,
+              position: "relative",
+            }}>
+              <img src={heroImage} alt="Property"
+                style={{
+                  width: "100%", aspectRatio: "2.2/1",
+                  objectFit: "cover", display: "block",
+                }}
+              />
+              <div style={{
+                position: "absolute", top: 16, left: 20,
+                fontFamily: "'Bebas Neue', sans-serif",
+                fontSize: 11, letterSpacing: "0.24em",
+                color: "rgba(250,248,245,0.35)",
+                textShadow: "0 1px 4px rgba(0,0,0,0.5)",
+              }}>
+                THE APPROACH
+              </div>
+            </div>
+          </Reveal>
+        )}
+
+        {/* Opening hook — as a Verse, the first editorial moment */}
+        {narrative?.openingHook && (
+          <Reveal>
+            <Verse style={{
+              fontSize: "clamp(17px, 2.8vw, 22px)",
+              color: R.text, maxWidth: 580,
+              marginTop: 28, marginBottom: 8,
+            }}>
+              {narrative.openingHook}
+            </Verse>
+          </Reveal>
+        )}
 
         {/* ── Archetype slab ── */}
         {archetypeSlab && (

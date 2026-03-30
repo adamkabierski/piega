@@ -70,6 +70,17 @@ const PIPELINE = [
     group: "par",
   },
   {
+    id: "video_facade",
+    label: "Video Facade",
+    icon: "◉",
+    brief: "4-second exterior transformation video",
+    resultKey: "video_facade",
+    triggerPath: (id) => `/reports/${id}/video-facade`,
+    detailHref: null,
+    deps: ["renovation_visualisation"],
+    group: "par",
+  },
+  {
     id: "narrative_writer",
     label: "Narrative Writer",
     icon: "◉",
@@ -105,6 +116,7 @@ function getStatus(agent, report, running) {
   if (running.has(agent.id)) return "running";
   if (agent.id === "cost_estimator" && report.results?.cost_estimate_status === "running") return "running";
   if (agent.id === "narrative_writer" && report.results?.narrative_status === "running") return "running";
+  if (agent.id === "video_facade" && report.results?.video_facade_status === "running") return "running";
   if (agent.auto && ["pending", "running"].includes(report.status) && !report.results?.[agent.resultKey]) return "running";
   if (!agent.deps.every((k) => report.results?.[k])) return "locked";
   return "idle";
@@ -149,6 +161,11 @@ function getSummary(agent, report) {
       const s = n.openingHook;
       return s.length > 100 ? s.slice(0, 97) + "…" : s;
     }
+    case "video_facade": {
+      const vf = r.video_facade;
+      if (!vf?.videoUrl) return null;
+      return `${vf.durationSeconds ?? 4}s facade video · ${vf.resolution ?? "720p"}`;
+    }
     default:
       return null;
   }
@@ -156,7 +173,7 @@ function getSummary(agent, report) {
 
 function getLockedReason(agent, report) {
   if (!report) return "";
-  const labels = { classification: "Classifier", design_brief: "Design Brief", cost_estimate: "Cost Estimator", narrative: "Narrative Writer" };
+  const labels = { classification: "Classifier", design_brief: "Design Brief", cost_estimate: "Cost Estimator", narrative: "Narrative Writer", renovation_visualisation: "Visualiser" };
   return agent.deps
     .filter((k) => !report.results?.[k])
     .map((k) => labels[k] ?? k)
@@ -171,6 +188,7 @@ const COST_KEYS = {
   visualiser: ["renovation_visualiser"],
   cost_estimator: ["cost_estimator"],
   narrative_writer: ["narrative_writer"],
+  video_facade: ["video_facade"],
 };
 
 function getAgentCost(agent, report) {

@@ -24,6 +24,8 @@ import { runRenovationVisualiser } from "./agents/renovationVisualiser.js";
 import { runDesignBrief } from "./agents/designBrief.js";
 import { runCostEstimator } from "./agents/costEstimator.js";
 import { runNarrativeWriter } from "./agents/narrativeWriter.js";
+import { runVideoFacade } from "./agents/videoFacade.js";
+import type { VideoFacadeInput } from "./agents/videoFacade.js";
 import type { ParsedListing } from "./types/listing.js";
 import type { BuyerPurpose } from "./types/common.js";
 import type {
@@ -399,6 +401,59 @@ app.post("/reports/:id/narrative", async (req, res) => {
 });
 
 // ═══════════════════════════════════════════════════════════════════════════
+// POST /reports/:id/video-facade — Generate 4-second exterior facade video
+// ═══════════════════════════════════════════════════════════════════════════
+
+app.post("/reports/:id/video-facade", async (req, res) => {
+  try {
+    const report = await getReport(req.params.id);
+    if (!report) {
+      res.status(404).json({ error: "Report not found" });
+      return;
+    }
+
+    const results = report.results as Record<string, unknown> | undefined;
+    const visualisation = results?.renovation_visualisation as
+      | { exteriors?: Array<{ originalUrl: string; renovatedUrl: string }> }
+      | undefined;
+
+    if (!visualisation?.exteriors?.length) {
+      res.status(400).json({
+        error: "Report has no exterior visualisations — run the Renovation Visualiser first",
+      });
+      return;
+    }
+
+    // Check if already running
+    if (results?.video_facade_status === "running") {
+      res.status(409).json({ error: "Video facade is already running for this report" });
+      return;
+    }
+
+    console.log(`[server] Starting video facade for report ${req.params.id}`);
+
+    // Mark as running
+    await mergeAgentResult(req.params.id, "video_facade_status", "running");
+
+    // Return immediately
+    res.status(202).json({
+      id: req.params.id,
+      message: "Video facade started — poll GET /reports/:id for progress",
+    });
+
+    // Run in background
+    runVideoFacadePipeline(req.params.id, visualisation.exteriors[0]).catch((err) => {
+      console.error(`[server] Video facade pipeline failed for ${req.params.id}:`, err);
+    });
+  } catch (err) {
+    console.error("[server] POST /reports/:id/video-facade error:", err);
+    res.status(500).json({
+      error: err instanceof Error ? err.message : "Internal server error",
+    });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
 // GET /pipeline — Static pipeline definition for the canvas UI
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -471,6 +526,24 @@ app.get("/pipeline", (_req, res) => {
           outputFormat: "Per image: originalUrl, renovatedUrl, promptUsed, depicts, type. Totals: cost, duration, model",
         },
         tech: ["Claude text", "fal.ai Nano Banana", "Progressive Supabase writes"],
+      },
+      {
+        id: "video_facade",
+        type: "agent",
+        label: "Video Facade",
+        description: "Generates a 4-second morphing video of the exterior facade transformation using Vidu (fal.ai). Takes the best before/after exterior pair.",
+        tier: 2.5,
+        status: "live",
+        trigger: "Manual — user clicks 'Generate Video'",
+        endpoint: "POST /reports/:id/video-facade",
+        outputKey: "results.video_facade",
+        model: "vidu/start-end-to-video",
+        promptPreview: {
+          system: null,
+          userTemplate: "Smooth renovation transformation of a house exterior. Camera remains perfectly static. Natural daylight. Realistic, steady transformation.",
+          outputFormat: "Video URL + duration + cost",
+        },
+        tech: ["fal.ai Vidu", "start-end-to-video"],
       },
       {
         id: "building_reader",
@@ -558,6 +631,7 @@ app.get("/pipeline", (_req, res) => {
       { from: "classifier", to: "renovation_visualiser", label: "classification (fallback)", dashed: true },
       { from: "design_brief", to: "cost_estimator", label: "design brief" },
       { from: "classifier", to: "cost_estimator", label: "archetype + architectural reading" },
+      { from: "renovation_visualiser", to: "video_facade", label: "exterior before/after pair" },
       { from: "classifier", to: "building_reader", label: "images + archetype", planned: true },
       { from: "chrome_extension", to: "area_analyst", label: "postcode + enriched area", planned: true },
       { from: "classifier", to: "renovation_architect", label: "archetype", planned: true },
@@ -829,6 +903,44 @@ async function runNarrativePipeline(
   }
 }
 
+/**
+ * Run the video facade pipeline for an existing report.
+ * Requires renovation_visualisation with at least one exterior pair.
+ */
+async function runVideoFacadePipeline(
+  reportId: string,
+  exterior: { originalUrl: string; renovatedUrl: string },
+): Promise<void> {
+  console.log(`[server] Starting video facade pipeline for report ${reportId}`);
+
+  try {
+    const input: VideoFacadeInput = {
+      beforeUrl: exterior.originalUrl,
+      afterUrl: exterior.renovatedUrl,
+    };
+
+    const result = await runVideoFacade(input);
+
+    // Write result
+    await mergeAgentResult(reportId, "video_facade", result);
+    await mergeAgentResult(reportId, "video_facade_status", "complete");
+    await mergePipelineCost(reportId, "video_facade", {
+      cost: result.cost,
+      model: "vidu/start-end-to-video",
+    });
+
+    console.log(
+      `[server] Video facade complete for ${reportId}: ${result.durationSeconds}s, $${result.cost.toFixed(2)}`,
+    );
+  } catch (err) {
+    console.error(`[server] Video facade pipeline error for ${reportId}:`, err);
+    await mergeAgentResult(reportId, "video_facade_status", "error").catch(console.error);
+    const msg = err instanceof Error ? err.message : String(err);
+    const { appendReportError } = await import("./db/reports.js");
+    await appendReportError(reportId, `Video facade failed: ${msg}`).catch(console.error);
+  }
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 // START
 // ═══════════════════════════════════════════════════════════════════════════
@@ -848,6 +960,7 @@ export function startServer(port = PORT): Promise<import("node:http").Server> {
       console.log(`[server] POST /reports/:id/visualise — Run renovation visualiser`);
       console.log(`[server] POST /reports/:id/cost-estimate — Run cost estimator`);
       console.log(`[server] POST /reports/:id/narrative — Run narrative writer`);
+      console.log(`[server] POST /reports/:id/video-facade — Generate facade video`);
       console.log(`[server] GET  /pipeline             — Pipeline definition`);
       console.log(`[server] GET  /health               — Health check`);
       resolve(server);

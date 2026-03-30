@@ -533,46 +533,46 @@ function ConditionIndicators({ constructionInferences }) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   DESIGN LANGUAGE — palette swatches + materials + mood
+   DESIGN LANGUAGE — palette · materials · mood (standalone sections)
    ═══════════════════════════════════════════════════════════════════════════ */
 
 function DesignLanguageBlock({ designLanguage }) {
   if (!designLanguage) return null;
 
   return (
-    <div style={{
-      padding: "20px 24px", borderRadius: 4,
-      border: `1px solid ${R.border}`, background: R.cardBg,
-      marginBottom: 28,
-    }}>
-      {/* Palette — real colour circles where possible */}
+    <div style={{ marginBottom: 32 }}>
+
+      {/* ── Palette — generous swatches like paint chips ── */}
       {designLanguage.palette?.length > 0 && (
-        <div style={{ marginBottom: 16 }}>
+        <div style={{ marginBottom: 32 }}>
           <div style={{
             fontSize: 10, fontWeight: 600, letterSpacing: 1.5,
-            textTransform: "uppercase", color: R.textLight, marginBottom: 10,
+            textTransform: "uppercase", color: R.textLight, marginBottom: 16,
           }}>
             Palette
           </div>
-          <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
             {designLanguage.palette.map((colour, i) => {
               const hex = guessHex(colour);
               return (
-                <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  {hex && (
-                    <span style={{
-                      width: 18, height: 18, borderRadius: "50%",
-                      background: hex, flexShrink: 0,
-                      border: `1px solid ${R.border}`,
-                      boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
-                    }} />
-                  )}
-                  <span style={{
+                <div key={i} style={{
+                  flex: "1 1 0", minWidth: 80, maxWidth: 160,
+                }}>
+                  {/* Colour swatch rectangle */}
+                  <div style={{
+                    height: 48, borderRadius: 3,
+                    background: hex || R.border,
+                    border: `1px solid ${R.border}`,
+                  }} />
+                  {/* Name beneath */}
+                  <div style={{
+                    fontFamily: "'EB Garamond', serif",
                     fontSize: 12, color: R.textMuted,
-                    fontFamily: "'EB Garamond', serif", fontStyle: "italic",
+                    marginTop: 6, lineHeight: 1.3,
+                    textAlign: "center",
                   }}>
                     {colour}
-                  </span>
+                  </div>
                 </div>
               );
             })}
@@ -580,37 +580,51 @@ function DesignLanguageBlock({ designLanguage }) {
         </div>
       )}
 
-      {/* Materials */}
+      {/* ── Materials — specification list ── */}
       {designLanguage.materials?.length > 0 && (
-        <div style={{ marginBottom: 16 }}>
+        <div style={{ marginBottom: 28 }}>
           <div style={{
             fontSize: 10, fontWeight: 600, letterSpacing: 1.5,
-            textTransform: "uppercase", color: R.textLight, marginBottom: 8,
+            textTransform: "uppercase", color: R.textLight, marginBottom: 14,
           }}>
             Materials
           </div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <div>
             {designLanguage.materials.map((mat, i) => (
-              <span key={i} style={{
-                fontSize: 11, color: R.textMuted,
-                padding: "4px 10px", borderRadius: 3,
-                border: `1px solid ${R.border}`, background: R.bg,
+              <div key={i} style={{
+                display: "flex", alignItems: "center",
+                padding: "9px 0",
+                borderBottom: i < designLanguage.materials.length - 1
+                  ? `1px solid ${R.border}` : "none",
               }}>
-                {mat}
-              </span>
+                <span style={{
+                  width: 6, height: 6, borderRadius: "50%", flexShrink: 0,
+                  background: BUDGET_COLOURS[i % BUDGET_COLOURS.length],
+                  marginRight: 14, opacity: 0.6,
+                }} />
+                <span style={{
+                  fontFamily: "'EB Garamond', serif",
+                  fontSize: 15, color: R.text, lineHeight: 1.4,
+                }}>
+                  {mat}
+                </span>
+              </div>
             ))}
           </div>
         </div>
       )}
 
-      {/* Mood */}
+      {/* ── Mood — generous italic quote ── */}
       {designLanguage.mood && (
         <div style={{
-          fontFamily: "'EB Garamond', serif",
-          fontSize: 15, fontStyle: "italic",
-          color: R.accent, lineHeight: 1.6,
+          fontFamily: "'Playfair Display', serif",
+          fontSize: "clamp(16px, 2.6vw, 20px)",
+          fontStyle: "italic", lineHeight: 1.55,
+          color: R.accent, maxWidth: 540,
+          padding: "16px 0",
+          borderTop: `1px solid ${R.border}`,
         }}>
-          "{designLanguage.mood}"
+          “{designLanguage.mood}”
         </div>
       )}
     </div>
@@ -895,26 +909,45 @@ export default function ReportPage() {
           </Reveal>
         )}
 
-        {/* Period features */}
+        {/* Period features — vertical inventory list */}
         {reading?.periodFeatures?.length > 0 && (
           <Reveal>
-            <div style={{ marginBottom: 24 }}>
+            <div style={{ marginBottom: 32 }}>
               <div style={{
                 fontSize: 10, fontWeight: 600, letterSpacing: 1.5,
-                textTransform: "uppercase", color: R.textLight, marginBottom: 10,
+                textTransform: "uppercase", color: R.textLight, marginBottom: 14,
               }}>
                 Period Features
               </div>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                {reading.periodFeatures.map((f, i) => (
-                  <span key={i} style={{
-                    fontSize: 11, color: R.textMuted,
-                    padding: "4px 10px", borderRadius: 3,
-                    border: `1px solid ${R.border}`, background: R.cardBg,
-                  }}>
-                    {f.feature} <span style={{ color: R.textLight }}>· {f.status}</span>
-                  </span>
-                ))}
+              <div>
+                {reading.periodFeatures.map((f, i) => {
+                  const hidden = /hidden|likely|beneath|behind|under/i.test(f.status);
+                  return (
+                    <div key={i} style={{
+                      display: "flex", justifyContent: "space-between",
+                      alignItems: "baseline", padding: "10px 0",
+                      borderBottom: i < reading.periodFeatures.length - 1
+                        ? `1px solid ${R.border}` : "none",
+                    }}>
+                      <span style={{
+                        fontFamily: "'EB Garamond', serif",
+                        fontSize: 15, color: hidden ? R.textMuted : R.text,
+                        fontStyle: hidden ? "italic" : "normal",
+                        lineHeight: 1.4,
+                      }}>
+                        {f.feature}
+                      </span>
+                      <span style={{
+                        fontFamily: "'Inter', sans-serif", fontSize: 10,
+                        color: R.textLight, letterSpacing: "0.02em",
+                        flexShrink: 0, marginLeft: 16,
+                        textTransform: "lowercase",
+                      }}>
+                        {f.status}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </Reveal>

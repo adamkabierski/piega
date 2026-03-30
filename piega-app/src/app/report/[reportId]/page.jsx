@@ -761,6 +761,7 @@ export default function ReportPage() {
   const visualisation = results.renovation_visualisation;
   const costEstimate = results.cost_estimate;
   const narrative = results.narrative;
+  const videoFacade = results.video_facade;
 
   const allImages = [
     ...(visualisation?.exteriors ?? []),
@@ -934,7 +935,7 @@ export default function ReportPage() {
       {/* ═══════════════════════════════ BODY ═══════════════════════════════ */}
       <div style={{ maxWidth: 680, margin: "0 auto", padding: "0 24px" }}>
 
-        {/* ── Hero photo — in the content flow, not a background ── */}
+        {/* ── Hero media — video if available, otherwise static image ── */}
         {heroImage && (
           <Reveal>
             <div style={{
@@ -944,12 +945,25 @@ export default function ReportPage() {
               marginTop: -1, marginBottom: 8,
               position: "relative",
             }}>
-              <img src={heroImage} alt="Property"
-                style={{
-                  width: "100%",
-                  objectFit: "cover", display: "block",
-                }}
-              />
+              {videoFacade?.videoUrl ? (
+                <video
+                  src={videoFacade.videoUrl}
+                  poster={heroImage}
+                  autoPlay muted loop playsInline
+                  style={{
+                    width: "100%",
+                    display: "block",
+                  }}
+                />
+              ) : (
+                <img src={heroImage} alt="Property"
+                  style={{
+                    width: "100%",
+                    objectFit: "cover", display: "block",
+                  }}
+                />
+              )}
+            
               <div style={{
                 position: "absolute", top: 16, left: 20,
                 fontFamily: "'Bebas Neue', sans-serif",

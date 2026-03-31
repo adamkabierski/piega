@@ -4,8 +4,7 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { C } from "@/lib/theme";
-
-const AGENTS_URL = "http://localhost:4711";
+import { AGENTS_URL } from "@/lib/config";
 const POLL_MS = 3000;
 
 /* ═══════════════════════════════════════════════════════════════════════════

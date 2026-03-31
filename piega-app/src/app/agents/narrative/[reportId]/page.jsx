@@ -4,9 +4,9 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { C } from "@/lib/theme";
+import { AGENTS_URL } from "@/lib/config";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
-const AGENTS_URL = "http://localhost:4711";
 const POLL_INTERVAL_MS = 3000;
 
 // ─── Tiny shared components ─────────────────────────────────────────────────

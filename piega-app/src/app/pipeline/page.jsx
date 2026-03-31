@@ -4,8 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { C } from "@/lib/theme";
-
-const AGENTS_URL = "http://localhost:4711";
+import { AGENTS_URL } from "@/lib/config";
 
 // ─── Shared small components ────────────────────────────────────────────────
 

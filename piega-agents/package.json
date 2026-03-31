@@ -9,6 +9,7 @@
     "test:classifier": "vitest run test/agents/classifier.test.ts",
     "eval:classifier": "tsx eval/run.ts classifier",
     "dev": "tsx watch src/server.ts",
+    "start": "tsx src/server.ts",
     "smoke": "tsx test/smoke.ts"
   },
   "dependencies": {

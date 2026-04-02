@@ -353,14 +353,7 @@ export default function HomePage() {
         }}>
           Piega
         </div>
-        <Link href="/pipeline" style={{
-          fontFamily: "'EB Garamond',serif", fontSize: 12,
-          color: C.accent, textDecoration: "none",
-          letterSpacing: "0.08em", borderBottom: `1px solid ${C.bd}`,
-          paddingBottom: 1, transition: "border-color .3s",
-        }}>
-          Pipeline →
-        </Link>
+
       </header>
 
       {/* ─── HERO ──────────────────────────────────────────────────── */}

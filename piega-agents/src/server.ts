@@ -18,7 +18,7 @@ import "dotenv/config";
 import express, { type Express } from "express";
 import cors from "cors";
 
-import { createReport, getReport, updateReportStatus, mergeAgentResult, mergePipelineCost } from "./db/index.js";
+import { createReport, getReport, updateReportStatus, mergeAgentResult, mergePipelineCost, deleteReport, resetReport } from "./db/index.js";
 import { generateReport } from "./graph/index.js";
 import { runRenovationVisualiser } from "./agents/renovationVisualiser.js";
 import { runDesignBrief } from "./agents/designBrief.js";
@@ -120,26 +120,86 @@ app.get("/reports/:id", async (req, res) => {
 // GET /reports — List reports that have classification results
 // ═══════════════════════════════════════════════════════════════════════════
 
-app.get("/reports", async (_req, res) => {
+app.get("/reports", async (req, res) => {
   try {
+    const all = req.query.all === "1" || req.query.all === "true";
     const { getSupabase } = await import("./db/supabase.js");
-    const { data, error } = await getSupabase()
+    let query = getSupabase()
       .from("piega_reports")
       .select("id, listing_id, listing, purpose, status, results, created_at")
-      .eq("status", "complete")
       .order("created_at", { ascending: false });
 
+    if (!all) {
+      // Landing page: only published complete reports
+      query = query.eq("status", "complete");
+    }
+
+    const { data, error } = await query;
     if (error) throw new Error(error.message);
 
-    // Only include reports that have classification results
-    const classified = (data ?? []).filter(
-      (r: Record<string, unknown>) =>
-        r.results && typeof r.results === "object" && "classification" in (r.results as object)
-    );
+    // Landing page also needs classification present
+    const result = all
+      ? (data ?? [])
+      : (data ?? []).filter(
+          (r: Record<string, unknown>) =>
+            r.results && typeof r.results === "object" && "classification" in (r.results as object)
+        );
 
-    res.json(classified);
+    res.json(result);
   } catch (err) {
     console.error("[server] GET /reports error:", err);
+    res.status(500).json({
+      error: err instanceof Error ? err.message : "Internal server error",
+    });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// DELETE /reports/:id — Hard-delete a report
+// ═══════════════════════════════════════════════════════════════════════════
+
+app.delete("/reports/:id", async (req, res) => {
+  try {
+    const report = await getReport(req.params.id);
+    if (!report) {
+      res.status(404).json({ error: "Report not found" });
+      return;
+    }
+    await deleteReport(req.params.id);
+    console.log(`[server] Deleted report ${req.params.id}`);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("[server] DELETE /reports/:id error:", err);
+    res.status(500).json({
+      error: err instanceof Error ? err.message : "Internal server error",
+    });
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// POST /reports/:id/relaunch — Reset all results and re-run full pipeline
+// ═══════════════════════════════════════════════════════════════════════════
+
+app.post("/reports/:id/relaunch", async (req, res) => {
+  try {
+    const report = await getReport(req.params.id);
+    if (!report) {
+      res.status(404).json({ error: "Report not found" });
+      return;
+    }
+
+    // Wipe agent outputs, keep original listing + purpose
+    await resetReport(req.params.id);
+    console.log(`[server] Reset report ${req.params.id} for relaunch`);
+
+    res.json({ ok: true, id: report.id, message: "Pipeline relaunched from scratch" });
+
+    // Re-run classifier → full pipeline in background
+    runPipeline(report.id, report.listing, report.purpose).catch((err) => {
+      console.error(`[server] Relaunch pipeline failed for ${report.id}:`, err);
+    });
+  } catch (err) {
+    console.error("[server] POST /reports/:id/relaunch error:", err);
     res.status(500).json({
       error: err instanceof Error ? err.message : "Internal server error",
     });

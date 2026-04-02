@@ -1,200 +1,579 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { C } from "@/lib/theme";
+import { AGENTS_URL } from "@/lib/config";
 
-const WoodburyCardSVG = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 200" style={{ width: "100%", display: "block", aspectRatio: "2.2/1", opacity: 0.85 }}>
-    <defs>
-      <linearGradient id="cg" x1="0" y1="1" x2="0" y2="0">
-        <stop offset="0" stopColor="#141210" />
-        <stop offset="1" stopColor="#1A1816" />
-      </linearGradient>
-    </defs>
-    <rect fill="url(#cg)" width="440" height="200" />
-    <path d="M0,140 Q110,133 220,122 Q330,108 440,100" stroke={C.sage} strokeOpacity=".12" strokeWidth="1.5" fill="none" />
-    <path d="M0,143 Q110,136 220,125 Q330,111 440,103 L440,200 L0,200 Z" fill={C.sage} fillOpacity=".015" />
-    <rect x="155" y="72" width="130" height="42" fill="none" stroke={C.paper} strokeOpacity=".14" strokeWidth="1.2" />
-    <path d="M155,72 L220,52 L285,72" fill="none" stroke={C.paper} strokeOpacity=".14" strokeWidth="1.2" />
-    <rect x="132" y="114" width="60" height="28" fill="none" stroke={C.terracotta} strokeOpacity=".08" strokeWidth="1" strokeDasharray="3,2" />
-    <line x1="137" y1="142" x2="187" y2="142" stroke={C.sage} strokeOpacity=".2" strokeWidth="1.5" />
-    <text x="220" y="178" textAnchor="middle" fontFamily="Inter,sans-serif" fontSize="6.5" fill={C.warmGrey} fillOpacity=".25">147m elevation · split-level · the house steps down the hillside</text>
-    <rect x="305" y="82" width="50" height="32" fill="none" stroke={C.warmGrey} strokeOpacity=".05" strokeWidth="1" />
-    <path d="M305,82 L330,72 L355,82" fill="none" stroke={C.warmGrey} strokeOpacity=".05" strokeWidth="1" />
-    <line x1="220" y1="46" x2="220" y2="36" stroke={C.terracotta} strokeOpacity=".2" strokeWidth=".8" />
-    <text x="220" y="33" textAnchor="middle" fontFamily="serif" fontSize="7.5" fill={C.terracotta} fillOpacity=".5" fontStyle="italic">Woodbury</text>
-  </svg>
-);
+/* ═══════════════════════════════════════════════════════════════════════════
+   CARD REVEAL — scroll-triggered fade+rise
+   ═══════════════════════════════════════════════════════════════════════════ */
 
-const StatStrip = ({ stats }) => (
-  <div style={{ display: "flex", borderTop: `1px solid ${C.bd}`, borderBottom: `1px solid ${C.bd}`, margin: "0 -20px", padding: "0 20px" }}>
-    {stats.map((s, i) => (
-      <div key={i} style={{ flex: 1, padding: "9px 0 9px 6px", borderRight: i < stats.length - 1 ? `1px solid ${C.bd}` : "none" }}>
-        <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: "14px", letterSpacing: "0.05em", color: s.c || C.paper }}>{s.v}</div>
-        <div style={{ fontFamily: "'EB Garamond',serif", fontSize: "7px", letterSpacing: "0.18em", textTransform: "uppercase", color: C.warmGrey, opacity: 0.45 }}>{s.l}</div>
+function useReveal(threshold = 0.08) {
+  const ref = useRef(null);
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([e]) => { if (e.isIntersecting) { setVisible(true); obs.disconnect(); } },
+      { threshold },
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [threshold]);
+  return [ref, visible];
+}
+
+function CardReveal({ children, delay = 0 }) {
+  const [ref, v] = useReveal();
+  return (
+    <div ref={ref} style={{
+      opacity: v ? 1 : 0,
+      transform: v ? "translateY(0)" : "translateY(18px)",
+      transition: `opacity 0.55s ease ${delay}s, transform 0.55s ease ${delay}s`,
+    }}>
+      {children}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   FALLBACK CARDS — handcrafted demo reports (shown only when no pipeline
+   reports are available or as supplements to a thin pipeline)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+const FALLBACK_CARDS = [
+  {
+    id: "woodbury",
+    href: "/reports/woodbury",
+    heroImage: "/House_1/slot4.jpg",
+    name: "Woodbury",
+    tag: "Auction · Split-level detached",
+    location: "Woodbury Hill Path, Luton, LU2 7JR · 4 bed · Detached · Freehold",
+    price: "£340K+",
+    hookLine: "Someone else's unfinished project. Possibly your perfect beginning.",
+    publishedAt: "2026-03-27T09:00:00Z",
+  },
+  {
+    id: "cherry-cottage",
+    href: "/reports/cherry-cottage",
+    heroImage: "/House_2/slot1.jpg",
+    name: "Cherry Cottage",
+    tag: "Grade II · Thatched cottage",
+    location: "Alton Pancras, Dorchester, Dorset, DT2 7RW · 2 bed · Thatched",
+    price: "£200K",
+    hookLine: "The panelling is Georgian. The damp behind it is older. You are buying both.",
+    publishedAt: "2026-03-21T10:00:00Z",
+  },
+];
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   HELPERS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+function relativeTime(iso) {
+  if (!iso) return "";
+  const diff = Date.now() - new Date(iso).getTime();
+  const days = Math.floor(diff / 86400000);
+  if (days < 1) return "today";
+  if (days === 1) return "yesterday";
+  if (days < 7) return `${days} days ago`;
+  if (days < 14) return "last week";
+  if (days < 30) return `${Math.floor(days / 7)} weeks ago`;
+  const d = new Date(iso);
+  return d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+}
+
+/** Pick the best hero image: renovated exterior > best listing photo */
+function pickHeroImage(report) {
+  const r = report.results ?? {};
+  const listing = report.listing ?? {};
+
+  // Best: renovated exterior from the visualiser
+  const vis = r.renovation_visualisation;
+  if (vis?.exteriors?.length) return vis.exteriors[0].renovatedUrl;
+
+  // Good: highest-rated exterior from classifier
+  const classified = r.classification?.classifiedImages;
+  if (classified?.length) {
+    const bestExterior = classified.find(
+      (img) => img.type === "exterior" && img.usefulness === "high"
+    ) ?? classified.find((img) => img.type === "exterior");
+    if (bestExterior) {
+      const photos = listing.photos ?? [];
+      const photo = photos[bestExterior.imageIndex];
+      if (photo?.url) return photo.url;
+    }
+  }
+
+  // Fallback: first listing photo
+  return listing.photos?.[0]?.url ?? null;
+}
+
+/** Convert a pipeline report into a card shape */
+function reportToCard(report) {
+  const r = report.results ?? {};
+  const listing = report.listing ?? {};
+  const classification = r.classification;
+  const archetype = classification?.archetype;
+  const narrative = r.narrative;
+
+  const card = r.landing_card;
+  if (card) {
+    return {
+      id: report.id,
+      href: `/report/${report.id}`,
+      heroImage: card.heroImage ?? pickHeroImage(report),
+      name: card.name ?? listing.address?.split(",")[0] ?? "Property",
+      tag: card.tag ?? (archetype ? `${archetype.era} · ${archetype.displayName}` : ""),
+      location: card.location ?? listing.address,
+      price: card.price ?? (listing.askingPrice ? `\u00A3${Math.round(listing.askingPrice / 1000)}K` : ""),
+      hookLine: card.hookLine ?? narrative?.openingHook ?? classification?.summary ?? "",
+      publishedAt: card.publishedAt ?? report.created_at,
+    };
+  }
+
+  const addr = listing.address ?? "";
+  const firstPart = addr.split(",")[0]?.trim() ?? "Property";
+  const priceStr = listing.askingPrice ? `\u00A3${Math.round(listing.askingPrice / 1000)}K` : "";
+  const tagStr = archetype
+    ? [archetype.era, archetype.displayName].filter(Boolean).join(" \u00B7 ")
+    : listing.propertyType ?? "";
+  const locStr = [
+    addr,
+    listing.bedrooms ? `${listing.bedrooms} bed` : null,
+    listing.propertyType,
+  ].filter(Boolean).join(" \u00B7 ");
+  const hook = narrative?.openingHook ?? classification?.summary ?? "";
+
+  return {
+    id: report.id,
+    href: `/report/${report.id}`,
+    heroImage: pickHeroImage(report),
+    name: firstPart,
+    tag: tagStr,
+    location: locStr,
+    price: priceStr,
+    hookLine: hook,
+    publishedAt: report.created_at,
+  };
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PROPERTY CARD — photo, tag, name, price, location, hook line. Nothing else.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+function PropertyCard({ card }) {
+  const [hovered, setHovered] = useState(false);
+
+  const inner = (
+    <>
+      {card.heroImage && (
+        <img
+          src={card.heroImage}
+          alt=""
+          style={{
+            width: "100%", aspectRatio: "2/1", objectFit: "cover", display: "block",
+          }}
+        />
+      )}
+
+      <div style={{ padding: "14px 18px 18px", flex: 1, display: "flex", flexDirection: "column" }}>
+        {/* Tag + Timestamp */}
+        <div style={{
+          display: "flex", justifyContent: "space-between", alignItems: "baseline",
+          marginBottom: 6,
+        }}>
+          <span style={{
+            fontFamily: "'EB Garamond',serif", fontSize: 8,
+            letterSpacing: "0.2em", textTransform: "uppercase",
+            color: C.terracotta, opacity: 0.55,
+          }}>
+            {card.tag}
+          </span>
+          <span style={{
+            fontFamily: "'Inter',sans-serif", fontSize: 8,
+            color: C.warmGrey, opacity: 0.4,
+          }}>
+            {relativeTime(card.publishedAt)}
+          </span>
+        </div>
+
+        {/* Name + Price */}
+        <div style={{
+          display: "flex", justifyContent: "space-between", alignItems: "baseline",
+          marginBottom: 3,
+        }}>
+          <div style={{
+            fontFamily: "'Playfair Display',serif",
+            fontSize: "clamp(18px,2.4vw,22px)", fontWeight: 700,
+            lineHeight: 1.1, color: C.paper,
+          }}>
+            {card.name}
+          </div>
+          {card.price && (
+            <div style={{
+              fontFamily: "'Bebas Neue',sans-serif",
+              fontSize: "clamp(16px,2vw,20px)",
+              letterSpacing: "0.04em",
+              color: C.accentDark,
+              flexShrink: 0, marginLeft: 12,
+            }}>
+              {card.price}
+            </div>
+          )}
+        </div>
+
+        {/* Location */}
+        <div style={{
+          fontFamily: "'EB Garamond',serif", fontSize: 11,
+          color: `${C.tertGrey}75`, letterSpacing: "0.04em",
+          lineHeight: 1.5, marginBottom: 12,
+        }}>
+          {card.location}
+        </div>
+
+        {/* Hook line */}
+        {card.hookLine && (
+          <div style={{
+            fontFamily: "'Playfair Display',serif", fontStyle: "italic",
+            fontSize: 12, lineHeight: 1.6,
+            color: C.accent, paddingLeft: 10,
+            borderLeft: `2px solid ${C.terracotta}55`,
+            opacity: 0.65, flex: 1,
+          }}>
+            {card.hookLine}
+          </div>
+        )}
       </div>
-    ))}
-  </div>
-);
+    </>
+  );
+
+  const shared = {
+    display: "flex", flexDirection: "column",
+    background: C.darkCard,
+    border: `1px solid ${hovered ? C.bdh : C.bd}`,
+    overflow: "hidden",
+    transition: "border-color .4s, transform .4s",
+    transform: hovered ? "translateY(-4px)" : "none",
+    textDecoration: "none", color: "inherit",
+    cursor: "pointer",
+  };
+
+  return (
+    <Link href={card.href} style={shared}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}>
+      {inner}
+    </Link>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MAIN PAGE
+   ═══════════════════════════════════════════════════════════════════════════ */
 
 export default function HomePage() {
   const [email, setEmail] = useState("");
   const [done, setDone] = useState(false);
   const [error, setError] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [pipelineCards, setPipelineCards] = useState([]);
 
-  function go() {
-    if (!email || !email.includes("@")) { setError(true); setTimeout(() => setError(false), 1400); return; }
-    setDone(true);
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch(`${AGENTS_URL}/reports`);
+        if (!res.ok) return;
+        const reports = await res.json();
+        const cards = reports
+          .map(reportToCard)
+          .filter((c) => c.heroImage && c.hookLine);
+        setPipelineCards(cards);
+      } catch {
+        // Agents server offline — show seed cards only
+      }
+    })();
+  }, []);
+
+  // Pipeline cards are the primary source. Fallback demos fill in if pipeline is empty.
+  const allCards = (() => {
+    const pipelineIds = new Set(pipelineCards.map((c) => c.id));
+    const fallbacks = FALLBACK_CARDS.filter((f) => !pipelineIds.has(f.id));
+    const merged = [...pipelineCards, ...fallbacks];
+    merged.sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt));
+    return merged;
+  })();
+
+  // Mid-stream break after card 8 (if we have enough)
+  const breakAt = Math.min(8, allCards.length);
+  const topCards = allCards.slice(0, breakAt);
+  const bottomCards = allCards.slice(breakAt);
+
+  async function submitEmail() {
+    if (!email || !email.includes("@")) {
+      setError(true);
+      setTimeout(() => setError(false), 1400);
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const res = await fetch(`${AGENTS_URL}/subscribe`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      setDone(true);
+    } catch {
+      setDone(true);
+    }
+    setSubmitting(false);
   }
 
   return (
-    <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", position: "relative", zIndex: 1 }}>
-      {/* Header */}
-      <header style={{ padding: "28px 40px", display: "flex", alignItems: "center", justifyContent: "space-between", opacity: 0, animation: "arise .8s ease .2s forwards" }}>
-        <div style={{ fontFamily: "'Playfair Display',serif", fontSize: "17px", fontStyle: "italic", color: C.accentDark, letterSpacing: "0.02em" }}>Piega</div>
-        <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-          <Link href="/pipeline" style={{ fontFamily: "'EB Garamond',serif", fontSize: "12px", color: C.accent, textDecoration: "none", letterSpacing: "0.08em", borderBottom: `1px solid ${C.bd}`, paddingBottom: 1, transition: "border-color .3s" }}>Pipeline →</Link>
-          <div style={{ fontFamily: "'EB Garamond',serif", fontSize: "12px", fontStyle: "italic", color: `${C.tertGrey}60` }}>Early access · UK property</div>
+    <div style={{
+      minHeight: "100vh", display: "flex", flexDirection: "column",
+      position: "relative", zIndex: 1,
+    }}>
+
+      {/* ─── HEADER ────────────────────────────────────────────────── */}
+      <header style={{
+        padding: "28px 40px",
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        opacity: 0, animation: "arise .8s ease .2s forwards",
+      }}>
+        <div style={{
+          fontFamily: "'Playfair Display',serif", fontSize: 17,
+          fontStyle: "italic", color: C.accentDark, letterSpacing: "0.02em",
+        }}>
+          Piega
         </div>
+        <Link href="/pipeline" style={{
+          fontFamily: "'EB Garamond',serif", fontSize: 12,
+          color: C.accent, textDecoration: "none",
+          letterSpacing: "0.08em", borderBottom: `1px solid ${C.bd}`,
+          paddingBottom: 1, transition: "border-color .3s",
+        }}>
+          Pipeline →
+        </Link>
       </header>
 
-      {/* Hero */}
-      <div style={{ maxWidth: "760px", margin: "0 auto", padding: "60px 24px 50px", textAlign: "center" }}>
-        <div style={{ fontFamily: "'EB Garamond',serif", fontSize: "10px", letterSpacing: "0.3em", textTransform: "uppercase", color: `${C.accent}60`, marginBottom: "44px", opacity: 0, animation: "arise .9s ease .5s forwards" }}>
+      {/* ─── HERO ──────────────────────────────────────────────────── */}
+      <div style={{
+        maxWidth: 760, margin: "0 auto", padding: "60px 24px 50px",
+        textAlign: "center",
+      }}>
+        <div style={{
+          fontFamily: "'EB Garamond',serif", fontSize: 10,
+          letterSpacing: "0.3em", textTransform: "uppercase",
+          color: `${C.accent}60`, marginBottom: 44,
+          opacity: 0, animation: "arise .9s ease .5s forwards",
+        }}>
           Property Intelligence · United Kingdom
         </div>
         <div style={{ opacity: 0, animation: "arise 1s ease .7s forwards" }}>
-          <h1 style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(32px,6vw,70px)", fontWeight: 700, lineHeight: 1.06, letterSpacing: "-0.02em", color: C.paper, margin: 0 }}>
+          <h1 style={{
+            fontFamily: "'Playfair Display',serif",
+            fontSize: "clamp(32px,6vw,70px)", fontWeight: 700,
+            lineHeight: 1.06, letterSpacing: "-0.02em",
+            color: C.paper, margin: 0,
+          }}>
             The estate agent<br />told you a story.
           </h1>
-          <span style={{ display: "block", fontFamily: "'Bebas Neue',sans-serif", fontSize: "clamp(11px,1.4vw,16px)", letterSpacing: "0.26em", color: `${C.tertGrey}45`, margin: "16px 0 20px", opacity: 0, animation: "arise .8s ease .9s forwards" }}>
+          <span style={{
+            display: "block", fontFamily: "'Bebas Neue',sans-serif",
+            fontSize: "clamp(11px,1.4vw,16px)", letterSpacing: "0.26em",
+            color: `${C.tertGrey}45`, margin: "16px 0 20px",
+            opacity: 0, animation: "arise .8s ease .9s forwards",
+          }}>
             — WE ARE NOT THE ESTATE AGENT —
           </span>
-          <h1 style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(32px,6vw,70px)", fontWeight: 400, fontStyle: "italic", lineHeight: 1.06, letterSpacing: "-0.02em", color: C.terracotta, margin: 0 }}>
+          <h1 style={{
+            fontFamily: "'Playfair Display',serif",
+            fontSize: "clamp(32px,6vw,70px)", fontWeight: 400,
+            fontStyle: "italic", lineHeight: 1.06, letterSpacing: "-0.02em",
+            color: C.terracotta, margin: 0,
+          }}>
             We tell you the building.
           </h1>
         </div>
-        <p style={{ maxWidth: "460px", margin: "20px auto 0", fontFamily: "'EB Garamond',serif", fontStyle: "italic", fontSize: "clamp(15px,1.8vw,19px)", color: `${C.accent}80`, lineHeight: 1.65, opacity: 0, animation: "arise .9s ease 1.1s forwards" }}>
+        <p style={{
+          maxWidth: 460, margin: "20px auto 0",
+          fontFamily: "'EB Garamond',serif", fontStyle: "italic",
+          fontSize: "clamp(15px,1.8vw,19px)", color: `${C.accent}80`,
+          lineHeight: 1.65,
+          opacity: 0, animation: "arise .9s ease 1.1s forwards",
+        }}>
           An honest analysis of any UK property — what it is, where it sits, and what it will actually cost you to own. No flattery. No agenda. Just the fold.
         </p>
       </div>
 
-      {/* Reports */}
-      <div style={{ maxWidth: "840px", margin: "0 auto", padding: "20px 24px 60px", opacity: 0, animation: "arise 1s ease 1.3s forwards", width: "100%" }}>
-        <div style={{ textAlign: "center", marginBottom: "28px" }}>
-          <span style={{ fontFamily: "'EB Garamond',serif", fontSize: "9px", letterSpacing: "0.28em", textTransform: "uppercase", color: `${C.accent}50` }}>Recent Analyses</span>
+      {/* ─── THE STREAM ────────────────────────────────────────────── */}
+      <div style={{
+        maxWidth: 1080, margin: "0 auto", padding: "20px 24px 0",
+        width: "100%",
+        opacity: 0, animation: "arise .6s ease 1.2s forwards",
+      }}>
+        <div style={{ textAlign: "center", marginBottom: 28 }}>
+          <span style={{
+            fontFamily: "'Playfair Display',serif", fontStyle: "italic",
+            fontSize: 13, color: `${C.accent}50`,
+          }}>
+            Latest from the fold
+          </span>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
-          {/* Woodbury */}
-          <Link href="/reports/woodbury" style={{ textDecoration: "none", color: "inherit", display: "flex", flexDirection: "column", background: C.darkCard, border: `1px solid ${C.bd}`, overflow: "hidden", transition: "border-color .4s, transform .4s", cursor: "pointer" }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = C.bdh; e.currentTarget.style.transform = "translateY(-4px)"; }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = C.bd; e.currentTarget.style.transform = "none"; }}>
-            <img src="/House_1/slot4.jpg" alt="Woodbury" style={{ width: "100%", aspectRatio: "2.2/1", objectFit: "cover", display: "block" }} />
-            <div style={{ padding: "16px 20px 20px", flex: 1, display: "flex", flexDirection: "column" }}>
-              <div style={{ fontFamily: "'EB Garamond',serif", fontSize: "8px", letterSpacing: "0.22em", textTransform: "uppercase", color: C.terracotta, opacity: 0.55, marginBottom: "7px" }}>Auction · 18 March 2026</div>
-              <div style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(18px,2.6vw,24px)", fontWeight: 700, lineHeight: 1.1, color: C.paper, marginBottom: "3px" }}>Woodbury</div>
-              <div style={{ fontFamily: "'EB Garamond',serif", fontSize: "11px", color: `${C.tertGrey}75`, letterSpacing: "0.04em", marginBottom: "14px", lineHeight: 1.5 }}>Woodbury Hill Path, Luton, LU2 7JR · 4 bed · Detached · Split-level · Freehold</div>
-              <StatStrip stats={[{ v: "£340K+", l: "Guide", c: C.accentDark }, { v: "109 SQM", l: "Area" }, { v: "25 MIN", l: "London" }, { v: "£126K", l: "Upside" }]} />
-              <div style={{ fontFamily: "'Playfair Display',serif", fontStyle: "italic", fontSize: "12px", lineHeight: 1.6, color: C.accent, margin: "14px 0", paddingLeft: "10px", borderLeft: `2px solid ${C.terracotta}55`, opacity: 0.65, flex: 1 }}>
-                Someone else's unfinished project. Possibly your perfect beginning.
-              </div>
-              <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: "10px", letterSpacing: "0.2em", color: C.accentDark, marginTop: "auto" }}>READ THE FULL ANALYSIS →</div>
-            </div>
-          </Link>
 
-          {/* Cherry Cottage */}
-          <Link href="/reports/cherry-cottage" style={{ textDecoration: "none", color: "inherit", display: "flex", flexDirection: "column", background: C.darkCard, border: `1px solid ${C.bd}`, overflow: "hidden", transition: "border-color .4s, transform .4s", cursor: "pointer" }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = C.bdh; e.currentTarget.style.transform = "translateY(-4px)"; }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = C.bd; e.currentTarget.style.transform = "none"; }}>
-            <img src="/House_2/slot1.jpg" alt="Cherry Cottage" style={{ width: "100%", aspectRatio: "2.2/1", objectFit: "cover", display: "block" }} />
-            <div style={{ padding: "16px 20px 20px", flex: 1, display: "flex", flexDirection: "column" }}>
-              <div style={{ fontFamily: "'EB Garamond',serif", fontSize: "8px", letterSpacing: "0.22em", textTransform: "uppercase", color: C.terracotta, opacity: 0.55, marginBottom: "7px" }}>Auction · Digby Hall, Sherborne</div>
-              <div style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(18px,2.6vw,24px)", fontWeight: 700, lineHeight: 1.1, color: C.paper, marginBottom: "3px" }}>Cherry Cottage</div>
-              <div style={{ fontFamily: "'EB Garamond',serif", fontSize: "11px", color: `${C.tertGrey}75`, letterSpacing: "0.04em", marginBottom: "14px", lineHeight: 1.5 }}>Alton Pancras, Dorchester, Dorset, DT2 7RW · 2 bed · Thatched · Grade II Listed</div>
-              <StatStrip stats={[{ v: "£200K", l: "Guide", c: C.accentDark }, { v: "GRADE II", l: "Listed", c: C.terracotta }, { v: "0.2 ACRE", l: "Land" }, { v: "£150K+", l: "Upside" }]} />
-              <div style={{ fontFamily: "'Playfair Display',serif", fontStyle: "italic", fontSize: "12px", lineHeight: 1.6, color: C.accent, margin: "14px 0", paddingLeft: "10px", borderLeft: `2px solid ${C.terracotta}55`, opacity: 0.65, flex: 1 }}>
-                The panelling is Georgian. The damp behind it is older. You are buying both.
-              </div>
-              <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: "10px", letterSpacing: "0.2em", color: C.accentDark, marginTop: "auto" }}>READ THE FULL ANALYSIS →</div>
-            </div>
-          </Link>
-        </div>
-      </div>
-
-      {/* Divider */}
-      <div style={{ width: "40px", height: "1px", background: C.accentDark, margin: "0 auto", opacity: 0.18 }} />
-
-      {/* Proposition */}
-      <div style={{ maxWidth: "520px", margin: "0 auto", padding: "44px 24px 52px", textAlign: "center", opacity: 0, animation: "arise .9s ease 1.55s forwards" }}>
-        <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(20px,3vw,30px)", fontWeight: 700, color: C.paper, lineHeight: 1.15, marginBottom: "16px" }}>
-          Every property has a <em style={{ fontWeight: 400, fontStyle: "italic", color: C.terracotta }}>piega.</em>
-        </h2>
-        <p style={{ fontFamily: "'EB Garamond',serif", fontStyle: "italic", fontSize: "clamp(14px,1.6vw,17px)", color: `${C.accent}66`, lineHeight: 1.7 }}>
-          A fold. A turning point. The moment it stops being someone else's problem and starts being your project. We find that moment — with architectural reading, honest numbers, and no agenda. If the numbers don't work, we'll tell you to fold.
-        </p>
-      </div>
-
-      <div style={{ width: "40px", height: "1px", background: C.accentDark, margin: "0 auto", opacity: 0.18 }} />
-
-      {/* How it works */}
-      <div style={{ maxWidth: "600px", margin: "0 auto", padding: "40px 24px 56px", opacity: 0, animation: "arise .9s ease 1.7s forwards", width: "100%" }}>
-        <div style={{ textAlign: "center", marginBottom: "20px" }}>
-          <span style={{ fontFamily: "'EB Garamond',serif", fontSize: "9px", letterSpacing: "0.28em", textTransform: "uppercase", color: `${C.accent}44` }}>What you get</span>
-        </div>
-        <div style={{ display: "flex", gap: "6px" }}>
-          {[
-            { n: "01", t: "The Place", d: "Context map, commute analysis, neighbourhood comparables. Where the building sits and what that means for you." },
-            { n: "02", t: "The Building", d: "Room-by-room reading. Floor plans, cross sections, condition matrix. What the photos show and what they hide." },
-            { n: "03", t: "The Number", d: "Total cost envelope — not just the asking price. Remedial budget, scenarios, the gap between guide and done." },
-          ].map((s, i) => (
-            <div key={i} style={{ flex: 1, background: C.darkCard, border: `1px solid ${C.bd}`, padding: "16px 14px" }}>
-              <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: "28px", color: `${C.accent}1F`, marginBottom: "4px", lineHeight: 1 }}>{s.n}</div>
-              <div style={{ fontFamily: "'Playfair Display',serif", fontSize: "13px", fontWeight: 700, color: C.paper, lineHeight: 1.2, marginBottom: "5px" }}>{s.t}</div>
-              <div style={{ fontFamily: "'EB Garamond',serif", fontStyle: "italic", fontSize: "11.5px", color: `${C.tertGrey}60`, lineHeight: 1.5 }}>{s.d}</div>
-            </div>
+        {/* Top 8 cards */}
+        <div className="card-grid" style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(3, 1fr)",
+          gap: 14,
+        }}>
+          {topCards.map((card, i) => (
+            <CardReveal key={card.id} delay={i * 0.06}>
+              <PropertyCard card={card} />
+            </CardReveal>
           ))}
         </div>
+
+        {/* Mid-stream break + remaining cards — only when stream is long enough */}
+        {bottomCards.length > 0 && (
+          <>
+            <CardReveal>
+              <div style={{
+                textAlign: "center", padding: "48px 24px",
+                maxWidth: 480, margin: "0 auto",
+              }}>
+                <span style={{
+                  fontFamily: "'Playfair Display',serif", fontStyle: "italic",
+                  fontSize: "clamp(15px,2.2vw,19px)", color: `${C.accent}55`,
+                  lineHeight: 1.65,
+                }}>
+                  Every property has a piega — a fold. The moment it stops being someone else's problem and starts being your project.
+                </span>
+              </div>
+            </CardReveal>
+
+            <div className="card-grid" style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(3, 1fr)",
+              gap: 14,
+            }}>
+              {bottomCards.map((card, i) => (
+                <CardReveal key={card.id} delay={i * 0.06}>
+                  <PropertyCard card={card} />
+                </CardReveal>
+              ))}
+            </div>
+          </>
+        )}
       </div>
 
-      {/* Email */}
-      <div style={{ maxWidth: "460px", margin: "0 auto", padding: "0 24px 90px", textAlign: "center", opacity: 0, animation: "arise .9s ease 1.85s forwards", width: "100%" }}>
-        <div style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(18px,2.6vw,24px)", fontWeight: 700, color: C.paper, marginBottom: "5px", lineHeight: 1.2 }}>
-          Get the next analysis<br /><em style={{ fontWeight: 400, fontStyle: "italic", color: C.terracotta }}>before anyone else does.</em>
+      {/* ─── EMAIL CAPTURE ────────────────────────────────────────── */}
+      <div style={{
+        maxWidth: 460, margin: "0 auto", padding: "56px 24px 90px",
+        textAlign: "center", width: "100%",
+      }}>
+        <div style={{
+          fontFamily: "'Playfair Display',serif",
+          fontSize: "clamp(18px,2.6vw,24px)", fontWeight: 700,
+          color: C.paper, marginBottom: 5, lineHeight: 1.2,
+        }}>
+          Get the next reading<br />
+          <em style={{ fontWeight: 400, fontStyle: "italic", color: C.terracotta }}>
+            before anyone else does.
+          </em>
         </div>
-        <div style={{ fontFamily: "'EB Garamond',serif", fontStyle: "italic", fontSize: "13.5px", color: `${C.accent}66`, marginBottom: "22px", lineHeight: 1.5 }}>
-          One property. Laid bare. No pitch, no weekly newsletter.
+        <div style={{
+          fontFamily: "'EB Garamond',serif", fontStyle: "italic",
+          fontSize: 13.5, color: `${C.accent}66`, marginBottom: 22,
+          lineHeight: 1.5,
+        }}>
+          One property. Laid bare. No pitch, no weekly newsletter noise.
         </div>
         {!done ? (
           <>
             <div style={{ display: "flex", width: "100%" }}>
               <input
-                type="email" value={email} onChange={e => setEmail(e.target.value)}
-                onKeyDown={e => e.key === "Enter" && go()}
+                type="email" value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && submitEmail()}
                 placeholder="your@email.com"
-                style={{ flex: 1, background: "rgba(255,255,255,0.035)", border: `1px solid ${error ? C.terracotta : "rgba(184,169,154,0.32)"}`, borderRight: "none", padding: "15px 20px", fontFamily: "'EB Garamond',serif", fontSize: "17px", color: C.paper, outline: "none", transition: "border-color .3s" }}
+                style={{
+                  flex: 1, background: "rgba(255,255,255,0.035)",
+                  border: `1px solid ${error ? C.terracotta : "rgba(184,169,154,0.32)"}`,
+                  borderRight: "none", padding: "15px 20px",
+                  fontFamily: "'EB Garamond',serif", fontSize: 17,
+                  color: C.paper, outline: "none", transition: "border-color .3s",
+                }}
               />
-              <button onClick={go} style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: "14px", letterSpacing: "0.18em", color: C.dark, background: C.accent, border: "none", padding: "0 26px", cursor: "pointer", flexShrink: 0 }}>
+              <button
+                onClick={submitEmail}
+                disabled={submitting}
+                style={{
+                  fontFamily: "'Bebas Neue',sans-serif", fontSize: 14,
+                  letterSpacing: "0.18em", color: C.dark, background: C.accent,
+                  border: "none", padding: "0 26px", cursor: "pointer",
+                  flexShrink: 0, opacity: submitting ? 0.5 : 1,
+                }}
+              >
                 SEND IT
               </button>
             </div>
-            <div style={{ marginTop: "11px", fontFamily: "'EB Garamond',serif", fontSize: "11.5px", fontStyle: "italic", color: `${C.tertGrey}4C` }}>
-              Early access. We'll tell you when the next building is ready.
+            <div style={{
+              marginTop: 11, fontFamily: "'EB Garamond',serif",
+              fontSize: 11.5, fontStyle: "italic", color: `${C.tertGrey}4C`,
+            }}>
+              You'll know when the next building is ready.
             </div>
           </>
         ) : (
           <div style={{ padding: "18px 0", animation: "arise .6s ease both" }}>
-            <b style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: "clamp(30px,4.5vw,48px)", letterSpacing: "0.06em", color: C.paper, display: "block" }}>DONE.</b>
-            <span style={{ fontFamily: "'EB Garamond',serif", fontStyle: "italic", fontSize: "15px", color: `${C.accent}80`, marginTop: "5px", display: "block" }}>You'll know when the next one is ready.</span>
+            <b style={{
+              fontFamily: "'Bebas Neue',sans-serif",
+              fontSize: "clamp(30px,4.5vw,48px)", letterSpacing: "0.06em",
+              color: C.paper, display: "block",
+            }}>
+              DONE.
+            </b>
+            <span style={{
+              fontFamily: "'EB Garamond',serif", fontStyle: "italic",
+              fontSize: 15, color: `${C.accent}80`, marginTop: 5,
+              display: "block",
+            }}>
+              You'll know when the next one is ready.
+            </span>
           </div>
         )}
       </div>
 
-      {/* Footer */}
-      <footer style={{ padding: "22px 40px", display: "flex", alignItems: "center", justifyContent: "center", borderTop: `1px solid ${C.bd}`, opacity: 0, animation: "arise .8s ease 2s forwards", marginTop: "auto" }}>
-        <p style={{ fontFamily: "'EB Garamond',serif", fontSize: "11px", fontStyle: "italic", color: `${C.tertGrey}40`, margin: 0 }}>
-          <strong style={{ fontStyle: "normal", fontWeight: 500, color: `${C.tertGrey}60` }}>Piega</strong> is in private development. Not affiliated with any estate agent. That is the point.
+      {/* ─── FOOTER ────────────────────────────────────────────────── */}
+      <footer style={{
+        padding: "22px 40px",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        borderTop: `1px solid ${C.bd}`, marginTop: "auto",
+      }}>
+        <p style={{
+          fontFamily: "'EB Garamond',serif", fontSize: 11,
+          fontStyle: "italic", color: `${C.tertGrey}40`, margin: 0,
+        }}>
+          <strong style={{ fontStyle: "normal", fontWeight: 500, color: `${C.tertGrey}60` }}>
+            Piega
+          </strong>{" "}
+          is in private development. Not affiliated with any estate agent. That is the point.
         </p>
       </footer>
+
+      {/* ─── RESPONSIVE ────────────────────────────────────────────── */}
+      <style>{`
+        .card-grid { grid-template-columns: repeat(3, 1fr); }
+        @media (max-width: 1024px) {
+          .card-grid { grid-template-columns: repeat(2, 1fr) !important; }
+        }
+        @media (max-width: 640px) {
+          .card-grid { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
     </div>
   );
 }

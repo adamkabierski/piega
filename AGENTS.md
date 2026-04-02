@@ -1,6 +1,6 @@
 ﻿# Piega — Agent Overview
 
-*Last updated: March 28, 2026*
+*Last updated: April 2, 2026*
 
 ---
 
@@ -9,13 +9,13 @@
 The full user journey runs in eight steps:
 
 ```
-[ Step 1 ]              [ Step 2 ]                    [ Step 3 ]              [ Step 4 + 5 (parallel) ]          [ Step 6 ]              [ Step 7 ]
-  Chrome Extension  →     Classifier              →     Design Brief      →     Renovation Visualiser      →     Narrative Writer   →     Report Assembly
-  (data collection)       + Architectural Reading       (renovation concept)    + Cost Estimator                  (editorial glue)        (rendered page)
-  automatic               automatic                    manual trigger          manual trigger                    manual trigger          no AI — just layout
+[ Step 1 ]              [ Step 2 ]                    [ Step 3 ]              [ Step 4 + 5 (parallel) ]          [ Step 6 ]              [ Step 7 ]              [ Step 8 ]
+  Chrome Extension  →     Classifier              →     Design Brief      →     Renovation Visualiser      →     Video Facade       →     Narrative Writer   →     Report Assembly
+  (data collection)       + Architectural Reading       (renovation concept)    + Cost Estimator                  (facade video)            (editorial glue)        (rendered page)
+  automatic               automatic                    manual trigger          manual trigger                    manual trigger            manual trigger          no AI — just layout
 ```
 
-After the Design Brief, the **Renovation Visualiser** and **Cost Estimator** can run in parallel — neither depends on the other. Both depend on the Classifier + Design Brief. After both complete, the **Narrative Writer** writes the editorial glue that holds the report together. Finally, the **Report Assembly** renders all outputs into a single shareable page — no AI, just layout.
+After the Design Brief, the **Renovation Visualiser** and **Cost Estimator** can run in parallel — neither depends on the other. Both depend on the Classifier + Design Brief. The **Video Facade** depends on the Visualiser and generates a short morphing video of the exterior transformation. After the parallel agents complete, the **Narrative Writer** writes the editorial glue that holds the report together. Finally, the **Report Assembly** renders all outputs into a single shareable page — no AI, just layout.
 
 Each step hands off to the next via a shared Supabase record. Nothing is coupled directly — the extension just creates a row, the classifier fills it in, the brief interprets it, the visualiser and cost estimator follow it, the narrative writer weaves it into prose, and the report page reads it all.
 
@@ -350,7 +350,56 @@ The estimator infers the region from the address and adjusts:
 
 ---
 
-## Step 6 — Narrative Writer
+## Step 6 — Video Facade Agent
+
+### What it does
+
+The Video Facade takes the best before/after exterior pair from the Renovation Visualiser and generates a **4-second morphing video** showing the building gradually transforming from its current state to the renovated version. No Claude call — the prompt is static. Just one Vidu call via fal.ai.
+
+### What it produces
+
+- **Video URL** — a hosted video of the exterior transformation
+- **Duration** — 4 seconds
+- **Cost** — ~$0.12 per video
+
+### How it works
+
+```
+User clicks "Run" on the Video Facade card in /pipeline/{reportId}
+    |
+    v
+Agent reads results.renovation_visualisation.exteriors[0]
+    |
+    v
+Ensures both before and after URLs are accessible from fal.ai servers
+(re-uploads if Rightmove CDN blocks access)
+    |
+    v
+Sends to Vidu (fal.ai/vidu/start-end-to-video):
+    - start_image_url: original exterior photo
+    - end_image_url: renovated exterior photo
+    - prompt: "Smooth renovation transformation of a house exterior.
+              Camera remains perfectly static. Natural daylight.
+              Realistic, steady transformation."
+    |
+    v
+Vidu returns video URL + duration
+    |
+    v
+Written to results.video_facade = { videoUrl, durationSeconds, cost }
+```
+
+Cost is ~$0.12 per video. No AI prompt crafting — the prompt is hardcoded.
+
+### Known limitations
+
+- **Single exterior only** — uses the first exterior pair from the visualiser. If the best exterior photo was weak, the video inherits that weakness.
+- **No camera movement** — the camera is static by design. The transformation is a morph, not a walkthrough.
+- **Depends on Visualiser** — requires at least one completed exterior visualisation.
+
+---
+
+## Step 7 — Narrative Writer
 
 ### What it does
 
@@ -419,7 +468,7 @@ Cost is ~$0.005 per report (single text call, no vision, low max tokens).
 
 ---
 
-## Step 7 — Report Assembly
+## Step 8 — Report Assembly
 
 ### What it does
 
@@ -429,21 +478,127 @@ This is the shareable output. The thing you'd send to a client, a partner, or yo
 
 ### What it produces
 
-A single-page report with five sections:
+A single scrolling document with a dark hero, four chapters, and a closing gate:
 
-1. **Hero** — property image, address, price, archetype badge, and the narrative writer's opening hook
-2. **Chapter 1: What You're Looking At** — the classifier's architectural reading (building narrative, period features, construction inferences) with the narrative's building reading transition
-3. **Chapter 2: What It Could Become** — the design brief's concept statement, design language (palette, materials, mood), and before/after image pairs from the visualiser
-4. **Chapter 3: What to Investigate** — the narrative writer's honest layer (reframed issues and unknowns)
-5. **Chapter 4: The Numbers** — budget breakdown bar, total envelope, price gap visual, phased budget timeline, cost drivers, and the narrative's value gap interpretation
-6. **Closing** — the narrative writer's closing statement
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  HERO (dark #1A1816 background)                                 │
+│                                                                 │
+│  Piega wordmark (Playfair italic, top-left)                     │
+│  RIGHTMOVE · POSTCODE · AREA (Bebas Neue context tag)           │
+│                                                                 │
+│  Property Name                                                  │
+│  (Playfair Display, 34–48px, cream)                             │
+│                                                                 │
+│  Full address · 3 bed · Semi-detached · Freehold (Inter, muted) │
+│                                                                 │
+│  £325K        3 BED       SEMI        1930–1945                 │
+│  guide        2 bath      Freehold    Interwar Semi             │
+│  (Bebas Neue stats row — discrete data points)                  │
+│                                                                 │
+│  Ghost watermark: "INTERWAR SEMI" at 200px, 2% opacity          │
+│                                                                 │
+├─────────────────────────────────────────────────────────────────┤
+│  HERO MEDIA (breaks out to 900px, full-bleed)                   │
+│                                                                 │
+│  If Video Facade exists → autoplay muted loop of facade morph   │
+│  Else → renovated exterior or best listing photo                │
+│  Label: "THE APPROACH" (top-left watermark)                     │
+│                                                                 │
+├─────────────────────────────────────────────────────────────────┤
+│  OPENING HOOK (Playfair italic, 17–22px — the first editorial   │
+│  moment. Narrative writer's openingHook.)                       │
+│                                                                 │
+│  ARCHETYPE SLAB (Bebas Neue, terracotta, uppercase)             │
+│  "INTERWAR SEMI. 1930–1945. CAVITY BRICK, CONCRETE TILE ROOF." │
+│                                                                 │
+├─── Chapter 1 · WHAT YOU'RE LOOKING AT ──────────────────────────┤
+│                                                                 │
+│  Narrative transition (Playfair italic Verse)                   │
+│  Building narrative (EB Garamond prose, 3–4 paragraphs)         │
+│  Period features (vertical inventory — visible normal,          │
+│    hidden/inferred italic, status labels right-aligned)         │
+│  Construction inferences (2-col grid: walls, roof, foundations, │
+│    insulation, windows & doors, heating & services)             │
+│                                                                 │
+│  ── thin divider ──                                             │
+│                                                                 │
+├─── Chapter 2 · WHAT IT COULD BECOME ───────────────────────────┤
+│                                                                 │
+│  Concept statement (EB Garamond prose)                          │
+│  Design language:                                               │
+│    Palette — colour swatches (48px rectangles + names)          │
+│    Materials — specification list with coloured dots            │
+│    Mood — "honest, warm, rooted in place" (Playfair italic)    │
+│                                                                 │
+│  Before / After sliders (draggable, 900px breakout, 16:9)      │
+│    Left = NOW (original) / Right = POSSIBLE (renovated)         │
+│    One per transformed image, stacked vertically                │
+│    Labels: "DRAG · FRONT EXTERIOR", "DRAG · KITCHEN", etc.     │
+│                                                                 │
+│  Strategy rationale (Inter caption)                             │
+│                                                                 │
+│  ── thin divider ──                                             │
+│                                                                 │
+├─── Chapter 3 · WHAT TO INVESTIGATE ────────────────────────────┤
+│                                                                 │
+│  "WHERE THE REAL DECISIONS ARE." (Bebas Neue slab)              │
+│  Honest layer narrative (EB Garamond prose, 2–3 paragraphs)     │
+│  Issues identified — expandable cards:                          │
+│    [▾ Damp staining on chimney breast          MODERATE ]       │
+│    Click to reveal: evidence + implication                      │
+│    Severity colours: significant=terracotta,                    │
+│      moderate=clay, minor=grey                                  │
+│  Unknowns — dimmed card: "Cannot Be Assessed From Photos"      │
+│    Bulleted list of 5–8 items                                   │
+│                                                                 │
+│  ── thin divider ──                                             │
+│                                                                 │
+├─── Chapter 4 · THE NUMBERS ────────────────────────────────────┤
+│  (conditional — only rendered if cost estimate exists)          │
+│                                                                 │
+│  Numbers transition (Playfair italic Verse)                     │
+│  Budget breakdown rows (category + notes + £Xk–£Yk range)      │
+│  Stacked proportional bar (coloured segments + labels)          │
+│                                                                 │
+│  £50k–£75k                                                      │
+│  (Bebas Neue, 52–96px — the BIG number)                        │
+│  "ten-year cost of ownership beyond purchase"                   │
+│                                                                 │
+│  Price gap visual: Asking Price → Est. Post-Works Value         │
+│  Value gap narrative (Playfair italic Verse with £ figures)     │
+│  Phased budget (3 stacked cards):                               │
+│    Move-in Basics (terracotta) / Year 1–2 (clay) /             │
+│    Complete Vision (sage)                                       │
+│  Cost drivers (cards with factor + impact)                      │
+│  Confidence + key assumptions (dimmed card, italic)             │
+│                                                                 │
+│  ── thin divider ──                                             │
+│                                                                 │
+├─── CLOSING GATE ───────────────────────────────────────────────┤
+│                                                                 │
+│  Closing statement (Playfair italic, centred)                   │
+│  "YOU READ THIS FAR." (Bebas Neue)                              │
+│  "This is one building. Yours is different." (Playfair italic)  │
+│                                                                 │
+├─── FOOTER ─────────────────────────────────────────────────────┤
+│  PIEGA.                                                         │
+│  Property intelligence · United Kingdom                         │
+│  "Not affiliated with any estate agent. That is the point."     │
+│  ← Pipeline Hub (link back)                                     │
+└─────────────────────────────────────────────────────────────────┘
+```
 
 ### Design
 
-- 680px max-width, warm off-white background (`#FAF8F5`)
-- Serif headings (Playfair Display), editorial body text (EB Garamond)
-- Not a dashboard — a document. Generous whitespace, chapter numbering, visual dividers
-- Graceful degradation: works without visualiser images (shows placeholder), minimum requires classifier + design brief + narrative
+- 680px max-width content column, warm off-white background (`#FAF8F5`)
+- Hero media and before/after sliders break out to 900px for cinematic impact
+- Dark hero section (`#1A1816`) — typographic, not image-based
+- Serif headings (Playfair Display), editorial body text (EB Garamond), dramatic caps (Bebas Neue), captions (Inter)
+- Not a dashboard — a document. Generous whitespace, chapter numbering, thin dividers
+- Scroll-triggered reveal animations (fade + rise via IntersectionObserver)
+- Interactive elements: draggable before/after sliders (mouse + touch), expandable issue cards
+- Graceful degradation: works without visualiser images (shows placeholder text), Chapter 4 only renders if cost estimate exists, video plays only if Video Facade ran
 
 ### How it works
 
@@ -459,8 +614,9 @@ Reads all result keys:
     results.classification
     results.design_brief
     results.renovation_visualisation (optional)
-    results.cost_estimate
+    results.cost_estimate (optional — Chapter 4 hidden without it)
     results.narrative
+    results.video_facade (optional — hero falls back to static image)
     |
     v
 Renders chapters in order, weaving narrative sections
@@ -474,24 +630,24 @@ Cost: $0 — no AI, no API calls. Just rendering.
 ## How the steps relate
 
 ```
-[ Step 1 ]                [ Step 2 ]                      [ Step 3 ]               [ Step 4 + 5 ]            [ Step 6 ]             [ Step 7 ]
-Chrome Extension          Classifier                      Design Brief             Parallel agents           Narrative Writer       Report Assembly
-----------------          ----------                      ------------             ---------------           ----------------       ---------------
-Runs on every             Runs automatically               Runs on demand           Runs on demand            Runs on demand         No AI — layout
-Rightmove page            when report is created           user triggers it         user triggers             user triggers          user opens page
+[ Step 1 ]                [ Step 2 ]                      [ Step 3 ]               [ Step 4 + 5 ]            [ Step 6 ]             [ Step 7 ]             [ Step 8 ]
+Chrome Extension          Classifier                      Design Brief             Parallel agents           Video Facade           Narrative Writer       Report Assembly
+----------------          ----------                      ------------             ---------------           ---------------        ----------------       ---------------
+Runs on every             Runs automatically               Runs on demand           Runs on demand            Runs on demand         Runs on demand         No AI — layout
+Rightmove page            when report is created           user triggers it         user triggers             user triggers          user triggers          user opens page
 
-Reads page data      ->   Call 1: archetype +          ->  Reads archetype,     ->  Visualiser: images    ->  Reads all prior    ->  Renders all
-Stores locally            image classification              image observations       + brief → fal.ai         agent outputs          outputs into
-POST /reports             Call 2: architectural reading    Creates unified                                    Writes editorial       single scrolling
-Opens pipeline hub        Writes:                          renovation concept       Cost Estimator:           glue (6 sections)      document
-                          results.classification           (palette, materials,     reading + brief           Writes:                Reads:
-                          └── .architecturalReading        mood, strategy)          → budget ranges           results.narrative      all results.* keys
-                                                           Writes:
+Reads page data      ->   Call 1: archetype +          ->  Reads archetype,     ->  Visualiser: images    ->  Takes best         ->  Reads all prior    ->  Renders all
+Stores locally            image classification              image observations       + brief → fal.ai         exterior pair          agent outputs          outputs into
+POST /reports             Call 2: architectural reading    Creates unified                                    Vidu generates         Writes editorial       single scrolling
+Opens pipeline hub        Writes:                          renovation concept       Cost Estimator:           4-second morph         glue (6 sections)      document
+                          results.classification           (palette, materials,     reading + brief           video                  Writes:                Reads:
+                          └── .architecturalReading        mood, strategy)          → budget ranges           Writes:                results.narrative      all results.* keys
+                                                           Writes:                                           results.video_facade
                                                            results.design_brief     Both write to
                                                                                     results.* keys
 ```
 
-The **Classifier** (both calls) is a prerequisite for everything. The **Design Brief** is a prerequisite for the **Cost Estimator** (required) and the **Visualiser** (optional — falls back to standalone mode without it). The **Visualiser** and **Cost Estimator** are independent and can run in parallel. The **Narrative Writer** requires classification, design brief, and cost estimate — the visualiser is optional but enriches the output. The **Report Assembly** reads everything and renders it — no AI.
+The **Classifier** (both calls) is a prerequisite for everything. The **Design Brief** is a prerequisite for the **Cost Estimator** (required) and the **Visualiser** (optional — falls back to standalone mode without it). The **Visualiser** and **Cost Estimator** are independent and can run in parallel. The **Video Facade** depends on the **Visualiser** (requires at least one exterior pair). The **Narrative Writer** requires classification, design brief, and cost estimate — the visualiser is optional but enriches the output. The **Report Assembly** reads everything and renders it — no AI.
 
 ---
 
@@ -500,9 +656,9 @@ The **Classifier** (both calls) is a prerequisite for everything. The **Design B
 All agents are managed from a single **Pipeline Hub** page at `/pipeline/{reportId}`. This is the primary interface after the Chrome extension sends data.
 
 The hub shows:
-- **Property header** — address, price, archetype badge, progress counter (X/5 agents done)
+- **Property header** — address, price, archetype badge, progress counter (X/6 agents done)
 - **Sequential agents** — Extension → Classifier → Design Brief, rendered vertically with connector lines
-- **Parallel agents** — Visualiser + Cost Estimator, rendered side-by-side after a fork connector
+- **Parallel agents** — Visualiser + Cost Estimator + Video Facade, rendered side-by-side after a fork connector
 - **Post-parallel agent** — Narrative Writer, rendered after a rejoin connector below the parallel pair
 - **Per-agent cards** — status badge (Complete / Running / Ready / Waiting), summary, action buttons (Run ▶, Re-run ↻, View Results →)
 - **View Report →** — appears when the Narrative Writer completes, linking to `/report/{reportId}`
@@ -534,6 +690,8 @@ The report picker at `/pipeline` lists all reports with a mini progress bar.
 | `/agents/narrative/{reportId}` | Narrative Writer detail (6 editorial sections) |
 | `/report/{reportId}` | Assembled report — the shareable, single-page output |
 
+The Video Facade has no detail page — its result (video URL) is shown inline on the pipeline hub.
+
 Old URLs (`/reports/{id}`, `/design-brief/{id}`, `/visualiser/{id}`, `/cost-estimate/{id}`) redirect to their new equivalents.
 
 ---
@@ -551,12 +709,13 @@ Old URLs (`/reports/{id}`, `/design-brief/{id}`, `/visualiser/{id}`, `/cost-esti
 | Renovation Visualiser | Post-production polish (optional) | `nano-banana-pro` | fal.ai | $0.15 / image |
 | Cost Estimator | Desktop cost appraisal | `claude-sonnet-4-20250514` | Anthropic | ~$0.01 / report |
 | Narrative Writer | Editorial glue (6 sections) | `claude-sonnet-4-20250514` | Anthropic | ~$0.005 / report |
+| Video Facade | 4-second exterior morph video | `vidu/start-end-to-video` | fal.ai | ~$0.12 / video |
 
 Nano Banana is a Google Gemini image model served via the fal.ai platform. Both variants accept an original photo + a text instruction and return a photo-realistic edited version. The model understands spatial relationships, lighting, and scene structure — it modifies the image rather than replacing it wholesale.
 
 The default production model is `nano-banana-pro`. At 5 images per report (with post-production) that's $1.50 per report for images.
 
-**Total per report**: ~$0.56–0.91 without post-production, ~$1.06–1.66 with post-production.
+**Total per report**: ~$0.56–0.91 without post-production or video, ~$1.18–1.78 with post-production and video facade.
 
 ---
 
@@ -571,5 +730,6 @@ piega_reports.results
 ├── design_brief                       <- written by Design Brief
 ├── renovation_visualisation           <- written by Renovation Visualiser
 ├── cost_estimate                      <- written by Cost Estimator
-└── narrative                          <- written by Narrative Writer
+├── narrative                          <- written by Narrative Writer
+└── video_facade                       <- written by Video Facade
 ```

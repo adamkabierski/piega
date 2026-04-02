@@ -1,3 +1,4 @@
+import { Analytics } from "@vercel/analytics/next";
 import StyledComponentsRegistry from "@/components/StyledComponentsRegistry";
 import GlobalStyles from "@/components/GlobalStyles";
 import { FONTS } from "@/lib/theme";
@@ -19,6 +20,7 @@ export default function RootLayout({ children }) {
         <StyledComponentsRegistry>
           <GlobalStyles />
           {children}
+          <Analytics />
         </StyledComponentsRegistry>
       </body>
     </html>

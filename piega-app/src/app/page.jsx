@@ -278,31 +278,36 @@ export default function HomePage() {
   const [done, setDone] = useState(false);
   const [error, setError] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [pipelineCards, setPipelineCards] = useState([]);
+  const [pipelineCards, setPipelineCards] = useState(null); // null = loading, [] = loaded empty
 
   useEffect(() => {
     (async () => {
       try {
         const res = await fetch(`${AGENTS_URL}/reports`);
-        if (!res.ok) return;
+        if (!res.ok) { setPipelineCards([]); return; }
         const reports = await res.json();
-        const cards = reports
-          .map(reportToCard)
-          .filter((c) => c.heroImage && c.hookLine);
+        const cards = reports.map(reportToCard);
         setPipelineCards(cards);
       } catch {
-        // Agents server offline — show seed cards only
+        // Agents server offline — fall back to demo cards
+        setPipelineCards(null);
       }
     })();
   }, []);
 
-  // Pipeline cards are the primary source. Fallback demos fill in if pipeline is empty.
+  // Pipeline reports are the one true source.
+  // Fallback demos only appear when the agents server is unreachable.
   const allCards = (() => {
-    const pipelineIds = new Set(pipelineCards.map((c) => c.id));
-    const fallbacks = FALLBACK_CARDS.filter((f) => !pipelineIds.has(f.id));
-    const merged = [...pipelineCards, ...fallbacks];
-    merged.sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt));
-    return merged;
+    if (pipelineCards === null) {
+      // Server offline — show demos
+      return [...FALLBACK_CARDS].sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt));
+    }
+    if (pipelineCards.length === 0) {
+      // Server reachable, no reports yet — show demos as placeholder
+      return [...FALLBACK_CARDS].sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt));
+    }
+    // Real pipeline reports only
+    return [...pipelineCards].sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt));
   })();
 
   // Mid-stream break after card 8 (if we have enough)

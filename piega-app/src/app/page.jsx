@@ -12,6 +12,12 @@ const STYLES = `
   * { box-sizing: border-box; }
   ::selection { background: ${C.terracotta}; color: ${C.paper}; }
 
+  .piega-page {
+    background: ${C.dark};
+    color: ${C.paper};
+    min-height: 100vh;
+  }
+
   .piega-mosaic {
     display: grid;
     grid-template-columns: repeat(12, 1fr);
@@ -275,8 +281,8 @@ function LargeSlider({ block }) {
       </div>
       <div style={{ padding: "8px 2px 0", display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8 }}>
         <div>
-          <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 15, fontWeight: 700, color: C.charcoal }}>{block.propertyName}</div>
-          {block.archetype && <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 9, color: C.warmGrey, letterSpacing: "0.06em", textTransform: "uppercase", marginTop: 1 }}>{block.archetype}</div>}
+          <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 15, fontWeight: 700, color: C.paper }}>{block.propertyName}</div>
+          {block.archetype && <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 11, color: C.tertGrey, letterSpacing: "0.06em", textTransform: "uppercase", marginTop: 2 }}>{block.archetype}</div>}
         </div>
         {block.price && <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 18, color: C.clay }}>{block.price}</div>}
       </div>
@@ -305,7 +311,7 @@ function MediumComposite({ block }) {
         <div style={{ position: "absolute", top: 0, bottom: 0, left: "50%", width: 1, background: C.paper, opacity: hovered ? 0 : 0.3, transition: "opacity 0.5s ease" }} />
       </div>
       <div style={{ padding: "5px 2px 0" }}>
-        <span style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: C.warmGrey }}>{block.propertyName} \u00B7 {block.room}</span>
+        <span style={{ fontFamily: "'Inter',sans-serif", fontSize: 11, color: C.tertGrey }}>{block.propertyName} \u00B7 {block.room}</span>
       </div>
     </div>
   );
@@ -345,7 +351,7 @@ function SmallPalette({ block }) {
     <div style={{ width: "100%", aspectRatio: "1/1", borderRadius: 6, overflow: "hidden", display: "flex", flexDirection: "column" }}>
       {block.hexValues.map((hex, i) => (
         <div key={i} style={{ flex: 1, background: hex, display: "flex", alignItems: "flex-end", padding: "0 6px 3px" }}>
-          <span style={{ fontFamily: "'Inter',sans-serif", fontSize: 7, color: "rgba(255,255,255,0.7)", letterSpacing: "0.04em" }}>{block.colours[i]}</span>
+          <span style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: "rgba(255,255,255,0.8)", letterSpacing: "0.04em" }}>{block.colours[i]}</span>
         </div>
       ))}
     </div>
@@ -356,11 +362,11 @@ function SmallPalette({ block }) {
 
 function SmallMaterial({ block }) {
   return (
-    <div style={{ width: "100%", aspectRatio: "1/1", borderRadius: 6, background: C.dark, display: "flex", flexDirection: "column", justifyContent: "center", padding: "12px 14px", gap: 6 }}>
+    <div style={{ width: "100%", aspectRatio: "1/1", borderRadius: 6, background: C.darkCard, border: `1px solid ${C.bd}`, display: "flex", flexDirection: "column", justifyContent: "center", padding: "12px 14px", gap: 6 }}>
       {block.materials.map((m, i) => (
         <div key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <div style={{ width: 5, height: 5, borderRadius: "50%", background: [C.clay, C.sage, C.accent][i % 3], opacity: 0.6 }} />
-          <span style={{ fontFamily: "'EB Garamond',serif", fontSize: 11, fontStyle: "italic", color: C.paper, opacity: 0.7 }}>{m}</span>
+          <span style={{ fontFamily: "'EB Garamond',serif", fontSize: 13, fontStyle: "italic", color: C.paper, opacity: 0.8 }}>{m}</span>
         </div>
       ))}
     </div>
@@ -370,13 +376,13 @@ function SmallMaterial({ block }) {
 /* ---------- Text block (all variants) ---------- */
 
 function TextBlock({ block }) {
-  const base = { width: "100%", minHeight: 160, borderRadius: 6, background: C.dark, display: "flex", flexDirection: "column", justifyContent: "center", padding: "24px 20px" };
+  const base = { width: "100%", minHeight: 160, borderRadius: 6, background: C.darkMid, display: "flex", flexDirection: "column", justifyContent: "center", padding: "24px 20px" };
 
   if (block.variant === "confrontation") {
     return (
       <div style={base}>
         {block.lines.map((line, i) => (
-          <div key={i} style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 15, color: C.paper, opacity: 0.25, letterSpacing: "0.04em", lineHeight: 1.5 }}>{line}</div>
+          <div key={i} style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 15, color: C.paper, opacity: 0.45, letterSpacing: "0.04em", lineHeight: 1.5 }}>{line}</div>
         ))}
         <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 17, fontStyle: "italic", color: C.terracotta, marginTop: 12, lineHeight: 1.5, whiteSpace: "pre-line" }}>{block.punchline}</div>
       </div>
@@ -388,7 +394,7 @@ function TextBlock({ block }) {
       <div style={base}>
         <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: "clamp(36px,5vw,56px)", color: C.paper, letterSpacing: "0.02em", lineHeight: 1 }}>{block.number}</div>
         {block.lines.map((line, i) => (
-          <div key={i} style={{ fontFamily: "'EB Garamond',serif", fontSize: 14, fontStyle: "italic", color: C.warmGrey, lineHeight: 1.6, marginTop: i === 0 ? 10 : 0 }}>{line}</div>
+          <div key={i} style={{ fontFamily: "'EB Garamond',serif", fontSize: 15, fontStyle: "italic", color: C.tertGrey, lineHeight: 1.6, marginTop: i === 0 ? 10 : 0 }}>{line}</div>
         ))}
       </div>
     );
@@ -397,7 +403,7 @@ function TextBlock({ block }) {
   if (block.variant === "hook" || block.type === "text_hook") {
     return (
       <div style={{ ...base, alignItems: "stretch", borderLeft: `3px solid ${C.terracotta}` }}>
-        <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 15, fontStyle: "italic", color: C.paper, lineHeight: 1.7, whiteSpace: "pre-line" }}>{block.text}</div>
+        <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 16, fontStyle: "italic", color: C.paper, lineHeight: 1.7, whiteSpace: "pre-line" }}>{block.text}</div>
       </div>
     );
   }
@@ -406,8 +412,8 @@ function TextBlock({ block }) {
     return (
       <div style={{ ...base, alignItems: "center", textAlign: "center" }}>
         <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: "clamp(32px,4vw,52px)", color: C.terracotta, letterSpacing: "0.02em", lineHeight: 1 }}>{block.number}</div>
-        <div style={{ fontFamily: "'EB Garamond',serif", fontSize: 13, fontStyle: "italic", color: C.warmGrey, marginTop: 8 }}>{block.label}</div>
-        {block.subtitle && <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 9, color: C.warmGrey, opacity: 0.5, marginTop: 4, letterSpacing: "0.04em" }}>{block.subtitle}</div>}
+        <div style={{ fontFamily: "'EB Garamond',serif", fontSize: 14, fontStyle: "italic", color: C.tertGrey, marginTop: 8 }}>{block.label}</div>
+        {block.subtitle && <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 11, color: C.warmGrey, opacity: 0.7, marginTop: 4, letterSpacing: "0.04em" }}>{block.subtitle}</div>}
       </div>
     );
   }
@@ -430,7 +436,7 @@ function VideoBlock({ block }) {
     <div ref={ref} style={{ width: "100%", aspectRatio: "16/9", borderRadius: 6, overflow: "hidden", position: "relative", background: C.dark }}>
       <video ref={videoRef} src={block.videoUrl} muted loop playsInline
         style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-      <div style={{ position: "absolute", bottom: 8, right: 10, fontFamily: "'Bebas Neue',sans-serif", fontSize: 9, color: C.paper, opacity: 0.4, letterSpacing: "0.08em" }}>FACADE \u00B7 4 SEC</div>
+      <div style={{ position: "absolute", bottom: 8, right: 10, fontFamily: "'Bebas Neue',sans-serif", fontSize: 11, color: C.paper, opacity: 0.5, letterSpacing: "0.08em" }}>FACADE \u00B7 4 SEC</div>
     </div>
   );
 }
@@ -689,48 +695,43 @@ export default function HomePage() {
   return (
     <>
       <style>{STYLES}</style>
-      <div style={{ minHeight: "100vh" }}>
+      <div className="piega-page">
 
         {/* ────────────────────────────────────────────────────────────
-            ZONE 1 — HERO (dark, compact — mosaic peeks above fold)
+            ZONE 1 — HERO (compact — mosaic peeks above fold)
             ──────────────────────────────────────────────────────────── */}
-        <div style={{ background: C.dark, padding: "clamp(28px,5vh,48px) 24px clamp(32px,5vh,56px)", textAlign: "center" }}>
+        <div style={{ padding: "clamp(24px,4vh,40px) 24px clamp(20px,3vh,32px)", textAlign: "center" }}>
           <div style={{ maxWidth: 680, margin: "0 auto" }}>
             {/* Wordmark */}
-            <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 16, fontStyle: "italic", color: C.accentDark, marginBottom: "clamp(24px,4vh,44px)" }}>Piega</div>
-
-            {/* Eyebrow */}
-            <div style={{ fontFamily: "'EB Garamond',serif", fontSize: 10, letterSpacing: "0.3em", textTransform: "uppercase", color: `${C.accent}50`, marginBottom: "clamp(16px,3vh,28px)" }}>
-              Property Intelligence \u00B7 United Kingdom
-            </div>
+            <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 16, fontStyle: "italic", color: C.accent, marginBottom: "clamp(16px,3vh,28px)" }}>Piega</div>
 
             {/* Headline */}
-            <h1 style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(28px,5vw,52px)", fontWeight: 700, color: C.paper, lineHeight: 1.15, margin: "0 0 6px" }}>
+            <h1 style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(28px,5vw,48px)", fontWeight: 700, color: C.paper, lineHeight: 1.15, margin: "0 0 6px" }}>
               The estate agent told you a story.
             </h1>
 
-            {/* Divider claim */}
-            <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: "clamp(10px,1.2vw,13px)", letterSpacing: "0.25em", color: `${C.warmGrey}50`, margin: "10px 0" }}>
-              \u2014 WE ARE NOT THE ESTATE AGENT \u2014
-            </div>
-
             {/* Italic line */}
-            <div style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(26px,4.5vw,48px)", fontStyle: "italic", color: C.terracotta, lineHeight: 1.2, margin: "0 0 20px" }}>
+            <div style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(26px,4.5vw,44px)", fontStyle: "italic", color: C.terracotta, lineHeight: 1.2, margin: "8px 0 16px" }}>
               We tell you the building.
             </div>
 
-            {/* Subtitle */}
-            <p style={{ fontFamily: "'EB Garamond',serif", fontSize: "clamp(14px,1.5vw,17px)", fontStyle: "italic", color: C.warmGrey, lineHeight: 1.7, margin: 0, maxWidth: 480, marginLeft: "auto", marginRight: "auto" }}>
-              An honest analysis of any UK property \u2014 what it is, where it sits, and what it will actually cost you to own.
+            {/* What it actually does — clear product statement */}
+            <p style={{ fontFamily: "'EB Garamond',serif", fontSize: "clamp(15px,1.6vw,18px)", color: C.tertGrey, lineHeight: 1.7, margin: "0 auto 12px", maxWidth: 520 }}>
+              A Chrome extension that reads any Rightmove listing and gives you the full picture: architectural reading, renovation concept, and cost estimate \u2014 in 90 seconds.
             </p>
+
+            {/* How it works in one line */}
+            <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: C.warmGrey, letterSpacing: "0.04em", lineHeight: 1.8 }}>
+              Install \u00B7 Browse Rightmove \u00B7 Click \u201CAnalyse\u201D \u00B7 Full report in 90 seconds
+            </div>
           </div>
         </div>
 
         {/* ────────────────────────────────────────────────────────────
-            ZONE 2 — MOSAIC
+            ZONE 2 — MOSAIC (no background change — stays dark)
             ──────────────────────────────────────────────────────────── */}
         {hasMosaic && (
-          <div style={{ background: C.bg, padding: "clamp(24px,4vw,48px) 0" }}>
+          <div style={{ padding: "clamp(16px,3vw,32px) 0" }}>
             <div className="piega-mosaic">
               {allBlocks.map((block, i) => (
                 <MosaicBlock key={block._key ?? `b-${i}`} block={block} index={i} />
@@ -742,49 +743,37 @@ export default function HomePage() {
         {/* ────────────────────────────────────────────────────────────
             ZONE 3 — DEMO ANIMATION
             ──────────────────────────────────────────────────────────── */}
-        <div style={{ background: C.bg, padding: "clamp(24px,4vw,56px) 24px" }}>
+        <div style={{ padding: "clamp(20px,3vw,40px) 24px" }}>
           <DemoAnimation
             demoImage={demoImage}
             demoAfterImage={demoAfterImage}
             demoCost={demoCost}
             demoName={demoName}
           />
-          {/* CTA below demo */}
-          <div style={{ textAlign: "center", marginTop: "clamp(16px,3vw,32px)" }}>
-            <div style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(15px,2vw,19px)", fontStyle: "italic", color: C.charcoal, lineHeight: 1.6 }}>
-              Every property has a story the estate agent didn\u2019t tell you.
-            </div>
-            {hasMosaic && (
-              <div style={{ fontFamily: "'EB Garamond',serif", fontSize: 12, fontStyle: "italic", color: C.warmGrey, marginTop: 8, cursor: "pointer" }}
-                onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
-                See what we found \u2191
-              </div>
-            )}
-          </div>
         </div>
 
         {/* ────────────────────────────────────────────────────────────
             ZONE 4 — CHROME EXTENSION CTA + EMAIL CAPTURE
             ──────────────────────────────────────────────────────────── */}
-        <div style={{ background: C.dark, padding: "clamp(48px,8vh,80px) 24px", textAlign: "center" }}>
+        <div style={{ padding: "clamp(32px,5vh,56px) 24px", textAlign: "center", borderTop: `1px solid ${C.bd}` }}>
           <div style={{ maxWidth: 540, margin: "0 auto" }}>
 
-            <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(22px,4vw,30px)", fontWeight: 700, color: C.paper, margin: "0 0 16px" }}>
+            <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(22px,4vw,30px)", fontWeight: 700, color: C.paper, margin: "0 0 12px" }}>
               See what your building is hiding.
             </h2>
-            <p style={{ fontFamily: "'EB Garamond',serif", fontSize: "clamp(14px,1.5vw,17px)", fontStyle: "italic", color: C.warmGrey, lineHeight: 1.7, margin: "0 0 32px" }}>
+            <p style={{ fontFamily: "'EB Garamond',serif", fontSize: "clamp(15px,1.5vw,17px)", color: C.tertGrey, lineHeight: 1.7, margin: "0 0 24px" }}>
               Piega lives on Rightmove. Install the extension. Browse any listing. Click once. The full reading arrives before you\u2019ve finished your tea.
             </p>
 
             {/* Desktop — Chrome extension card */}
-            <div className="piega-desktop-only" style={{ background: C.darkMid, border: `1px solid ${C.bd}`, borderRadius: 8, padding: "20px 24px", marginBottom: 20, maxWidth: 400, marginLeft: "auto", marginRight: "auto" }}>
+            <div className="piega-desktop-only" style={{ background: C.darkMid, border: `1px solid ${C.bd}`, borderRadius: 8, padding: "20px 24px", marginBottom: 16, maxWidth: 400, marginLeft: "auto", marginRight: "auto" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 16 }}>
                 <div style={{ width: 40, height: 40, borderRadius: 8, background: C.darkCard, display: "flex", alignItems: "center", justifyContent: "center", border: `1px solid ${C.bd}`, flexShrink: 0 }}>
                   <span style={{ fontFamily: "'Playfair Display',serif", fontSize: 16, fontStyle: "italic", color: C.accent }}>P</span>
                 </div>
                 <div style={{ textAlign: "left" }}>
                   <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 14, fontWeight: 600, color: C.paper }}>Add Piega to Chrome</div>
-                  <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 11, color: C.warmGrey }}>Free \u00B7 No signup \u00B7 10 seconds</div>
+                  <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: C.tertGrey }}>Free \u00B7 No signup \u00B7 10 seconds</div>
                 </div>
               </div>
               <a href="#chrome-store" style={{ display: "block", padding: "10px 16px", background: C.terracotta, borderRadius: 4, textAlign: "center", fontFamily: "'Bebas Neue',sans-serif", fontSize: 14, color: C.paper, letterSpacing: "0.1em", textDecoration: "none", transition: "opacity 0.2s" }}>
@@ -793,33 +782,33 @@ export default function HomePage() {
             </div>
 
             {/* Desktop — 4 quiet steps */}
-            <div className="piega-desktop-only" style={{ fontFamily: "'EB Garamond',serif", fontSize: 12, color: C.warmGrey, opacity: 0.5, lineHeight: 2, marginBottom: 24 }}>
-              \u2460 Add to Chrome &nbsp;\u00B7&nbsp; \u2461 Browse Rightmove as normal &nbsp;\u00B7&nbsp; \u2462 Click \u201CAnalyse\u201D on any listing &nbsp;\u00B7&nbsp; \u2463 Full reading in 90 seconds
+            <div className="piega-desktop-only" style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: C.warmGrey, lineHeight: 2, marginBottom: 20 }}>
+              \u2460 Add to Chrome &nbsp;\u00B7&nbsp; \u2461 Browse Rightmove &nbsp;\u00B7&nbsp; \u2462 Click \u201CAnalyse\u201D &nbsp;\u00B7&nbsp; \u2463 Full reading in 90s
             </div>
 
             {/* Mobile — explain desktop-only */}
-            <div className="piega-mobile-only" style={{ marginBottom: 24 }}>
-              <p style={{ fontFamily: "'EB Garamond',serif", fontSize: 14, fontStyle: "italic", color: C.warmGrey, lineHeight: 1.7, margin: "0 0 6px" }}>
+            <div className="piega-mobile-only" style={{ marginBottom: 20 }}>
+              <p style={{ fontFamily: "'EB Garamond',serif", fontSize: 15, color: C.tertGrey, lineHeight: 1.7, margin: "0 0 6px" }}>
                 Piega is a Chrome extension that reads any Rightmove listing and shows you what the estate agent left out.
               </p>
-              <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: C.warmGrey, opacity: 0.5, margin: "0 0 12px" }}>Currently desktop only.</p>
-              <p style={{ fontFamily: "'EB Garamond',serif", fontSize: 14, fontStyle: "italic", color: C.paper, margin: "0 0 16px" }}>
+              <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: C.warmGrey, margin: "0 0 12px" }}>Currently desktop only.</p>
+              <p style={{ fontFamily: "'EB Garamond',serif", fontSize: 15, color: C.paper, margin: "0 0 16px" }}>
                 Send yourself the link and try it tonight.
               </p>
             </div>
 
             {/* Divider */}
-            <div className="piega-desktop-only" style={{ fontFamily: "'EB Garamond',serif", fontSize: 12, color: C.warmGrey, opacity: 0.35, margin: "0 0 20px" }}>\u2014\u2014 or \u2014\u2014</div>
+            <div className="piega-desktop-only" style={{ fontFamily: "'Inter',sans-serif", fontSize: 11, color: C.warmGrey, opacity: 0.5, margin: "0 0 16px" }}>\u2014 or \u2014</div>
 
-            <p className="piega-desktop-only" style={{ fontFamily: "'EB Garamond',serif", fontSize: 13, fontStyle: "italic", color: C.warmGrey, margin: "0 0 14px" }}>
-              Not ready to install? Leave your email. We\u2019ll send you the next reading when it\u2019s ready.
+            <p className="piega-desktop-only" style={{ fontFamily: "'EB Garamond',serif", fontSize: 14, color: C.warmGrey, margin: "0 0 12px" }}>
+              Not ready to install? Leave your email.
             </p>
 
             {/* Email capture */}
             {done ? (
-              <div style={{ padding: "20px 0" }}>
+              <div style={{ padding: "16px 0" }}>
                 <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 36, color: C.terracotta, letterSpacing: "0.04em" }}>DONE.</div>
-                <p style={{ fontFamily: "'EB Garamond',serif", fontSize: 14, fontStyle: "italic", color: C.warmGrey, marginTop: 8 }}>We\u2019ll be in touch.</p>
+                <p style={{ fontFamily: "'EB Garamond',serif", fontSize: 14, color: C.tertGrey, marginTop: 8 }}>We\u2019ll be in touch.</p>
               </div>
             ) : (
               <div style={{ display: "flex", gap: 0, maxWidth: 380, margin: "0 auto" }}>
@@ -833,7 +822,7 @@ export default function HomePage() {
                     flex: 1, padding: "10px 14px", border: `1px solid ${formError ? C.terracotta : C.bd}`,
                     borderRight: "none", borderRadius: "4px 0 0 4px",
                     background: C.darkMid, color: C.paper,
-                    fontFamily: "'EB Garamond',serif", fontSize: 14,
+                    fontFamily: "'EB Garamond',serif", fontSize: 15,
                     outline: "none", transition: "border-color 0.3s",
                   }}
                 />
@@ -853,7 +842,7 @@ export default function HomePage() {
             )}
 
             {/* Sub-note */}
-            <p style={{ fontFamily: "'EB Garamond',serif", fontSize: 11, fontStyle: "italic", color: C.warmGrey, opacity: 0.35, marginTop: 14 }}>
+            <p style={{ fontFamily: "'EB Garamond',serif", fontSize: 12, color: C.warmGrey, opacity: 0.5, marginTop: 12 }}>
               No payment. No signup. Just the building.
             </p>
           </div>
@@ -862,12 +851,12 @@ export default function HomePage() {
         {/* ────────────────────────────────────────────────────────────
             FOOTER
             ──────────────────────────────────────────────────────────── */}
-        <footer style={{ background: C.bg, padding: "40px 24px 32px", textAlign: "center" }}>
-          <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 16, fontStyle: "italic", color: C.accentDark, marginBottom: 8 }}>Piega.</div>
-          <div style={{ fontFamily: "'EB Garamond',serif", fontSize: 11, fontStyle: "italic", color: C.warmGrey, opacity: 0.5, marginBottom: 4 }}>
+        <footer style={{ padding: "28px 24px 24px", textAlign: "center", borderTop: `1px solid ${C.bd}` }}>
+          <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 16, fontStyle: "italic", color: C.accent, marginBottom: 6 }}>Piega.</div>
+          <div style={{ fontFamily: "'EB Garamond',serif", fontSize: 12, color: C.warmGrey, marginBottom: 3 }}>
             Property intelligence \u00B7 United Kingdom
           </div>
-          <div style={{ fontFamily: "'EB Garamond',serif", fontSize: 11, fontStyle: "italic", color: C.warmGrey, opacity: 0.35 }}>
+          <div style={{ fontFamily: "'EB Garamond',serif", fontSize: 12, color: C.warmGrey, opacity: 0.5 }}>
             Not affiliated with any estate agent. That is the point.
           </div>
         </footer>

@@ -4,7 +4,7 @@ import { C } from "@/lib/theme";
 import { useInView } from "./hooks";
 
 /* ── Timing ── */
-const PHASE_DURATIONS = [3500, 2800, 3200, 6000];
+const PHASE_DURATIONS = [3000, 2500, 7500, 5500];
 const TOTAL = PHASE_DURATIONS.reduce((a, b) => a + b, 0);
 const PHASE_STARTS = PHASE_DURATIONS.reduce((acc, d, i) => {
   acc.push(i === 0 ? 0 : acc[i - 1] + PHASE_DURATIONS[i - 1]);
@@ -12,20 +12,24 @@ const PHASE_STARTS = PHASE_DURATIONS.reduce((acc, d, i) => {
 }, []);
 const MILESTONE_PCT = PHASE_STARTS.map((t) => (t / TOTAL) * 100);
 
-const MILESTONES = ["Browse", "Click", "Reading\u2026", "Report"];
+const MILESTONES = ["Browse", "Click", "Analyse", "Report"];
 
 const PHASE_LABELS = [
-  "You\u2019re browsing Rightmove. As usual.",
+  "This is all Rightmove shows you.",
   "One click. That\u2019s all you do.",
-  "We read every photo. Every detail.\nEvery number the agent left out.",
-  "The full reading. Ready.",
+  "Five trained models. One chain of thought.",
+  "The full reading. Before and after.",
 ];
-const PROCESSING_MSGS = [
-  "Reading the listing\u2026",
-  "Studying the photos\u2026",
-  "Running the numbers\u2026",
-  "Writing the honest version\u2026",
+
+/* Pipeline steps shown during Phase 2 */
+const PIPE_STEPS = [
+  { label: "Reading the building", result: "Interwar Semi \u00B7 1930\u20131945" },
+  { label: "Spotting what matters", result: "3 issues found \u00B7 5 unknowns flagged" },
+  { label: "Designing the renovation", result: "palette \u00B7 materials \u00B7 mood" },
+  { label: "Seeing the difference", result: "before \u2192 after" },
+  { label: "Writing the full reading", result: "4 chapters \u00B7 ready" },
 ];
+const PIPE_INTERVAL = 1400;
 
 /* Cursor waypoints per phase: [ms_offset, x%, y%, click?] */
 const CURSOR_SCRIPTS = [
@@ -144,11 +148,12 @@ export default function DemoAnimation({ demoImage, demoAfterImage, demoInteriorI
 
     if (startPhase === 2) {
       setProcMsg(0);
-      let mi = 0;
+      let pi = 0;
       procRef.current = setInterval(() => {
-        mi = (mi + 1) % PROCESSING_MSGS.length;
-        setProcMsg(mi);
-      }, 800);
+        pi = Math.min(pi + 1, PIPE_STEPS.length - 1);
+        setProcMsg(pi);
+        if (pi >= PIPE_STEPS.length - 1) clearInterval(procRef.current);
+      }, PIPE_INTERVAL);
     } else {
       clearInterval(procRef.current);
     }
@@ -162,12 +167,13 @@ export default function DemoAnimation({ demoImage, demoAfterImage, demoInteriorI
         if (p === 0) cycleStartRef.current = performance.now();
         if (p === 2) {
           setProcMsg(0);
-          let mi = 0;
+          let pi = 0;
           clearInterval(procRef.current);
           procRef.current = setInterval(() => {
-            mi = (mi + 1) % PROCESSING_MSGS.length;
-            setProcMsg(mi);
-          }, 800);
+            pi = Math.min(pi + 1, PIPE_STEPS.length - 1);
+            setProcMsg(pi);
+            if (pi >= PIPE_STEPS.length - 1) clearInterval(procRef.current);
+          }, PIPE_INTERVAL);
         } else {
           clearInterval(procRef.current);
         }
@@ -224,12 +230,25 @@ export default function DemoAnimation({ demoImage, demoAfterImage, demoInteriorI
           0%, 100% { opacity: 0.3; transform: scale(1); }
           50% { opacity: 0.8; transform: scale(1.6); }
         }
+        @keyframes demo-node-pulse {
+          0%, 100% { box-shadow: 0 0 6px rgba(196,119,91,0.3); }
+          50% { box-shadow: 0 0 14px rgba(196,119,91,0.6), 0 0 28px rgba(196,119,91,0.15); }
+        }
+        @keyframes demo-scan {
+          0% { background-position: 0 -100%; }
+          100% { background-position: 0 200%; }
+        }
+        @keyframes demo-fade-in {
+          0% { opacity: 0; transform: translateY(6px); }
+          100% { opacity: 1; transform: translateY(0); }
+        }
         @keyframes demo-report-scroll {
           0%, 4%    { transform: translateY(0); }
-          20%, 26%  { transform: translateY(-18%); }
-          42%, 48%  { transform: translateY(-34%); }
-          66%, 72%  { transform: translateY(-50%); }
-          92%, 100% { transform: translateY(-62%); }
+          18%, 22%  { transform: translateY(-14%); }
+          36%, 40%  { transform: translateY(-28%); }
+          56%, 60%  { transform: translateY(-42%); }
+          78%, 82%  { transform: translateY(-54%); }
+          94%, 100% { transform: translateY(-64%); }
         }
       `}</style>
 
@@ -275,46 +294,51 @@ export default function DemoAnimation({ demoImage, demoAfterImage, demoInteriorI
           <div style={{ flex: 1, background: RM.bg, overflow: "hidden", position: "relative" }}>
             <div style={{ height: 6, background: RM.green }} />
             <div style={{ padding: "clamp(10px,2vw,18px) clamp(12px,2.5vw,24px)", display: "flex", gap: "clamp(12px,2vw,20px)" }}>
-              {/* Left — Property photo */}
+              {/* Left — Property photos: exterior + raw interior */}
               <div style={{ width: "clamp(130px,35%,240px)", flexShrink: 0 }}>
                 <div style={{ aspectRatio: "4/3", borderRadius: 4, overflow: "hidden", boxShadow: "0 2px 8px rgba(0,0,0,0.08)" }}>
                   <img src={demoImage} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                 </div>
+                {/* Thumbnail strip — show raw interior in slot 1 to expose dated rooms */}
                 <div style={{ display: "flex", gap: 3, marginTop: 6 }}>
                   {[0, 1, 2, 3, 4].map((i) => (
-                    <div key={i} style={{ flex: 1, height: 28, borderRadius: 2, overflow: "hidden", background: RM.dummy, opacity: i === 0 ? 1 : 0.6 }}>
+                    <div key={i} style={{ flex: 1, height: 28, borderRadius: 2, overflow: "hidden", background: RM.dummy, opacity: i <= 1 ? 1 : 0.5 }}>
                       {i === 0 && <img src={demoImage} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
+                      {i === 1 && demoInteriorImage && <img src={demoInteriorImage} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
                     </div>
                   ))}
                 </div>
               </div>
 
-              {/* Right — Details + skeleton */}
+              {/* Right — Details + what's missing */}
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontFamily: "'Inter',sans-serif", fontSize: "clamp(18px,3.5vw,28px)", fontWeight: 700, color: RM.text, marginBottom: 4, lineHeight: 1.1 }}>{"\u00A3340,000+"}</div>
                 <div style={{ fontFamily: "'Inter',sans-serif", fontSize: "clamp(11px,1.4vw,14px)", color: RM.textMuted, marginBottom: 10, lineHeight: 1.3 }}>{name}</div>
-                <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginBottom: 14 }}>
+                <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginBottom: 10 }}>
                   {["4 bed", "Detached", "Freehold"].map((t) => (
                     <span key={t} style={{ fontSize: 10, color: RM.textMuted, padding: "3px 8px", background: RM.bgSoft, borderRadius: 3, fontFamily: "'Inter',sans-serif" }}>{t}</span>
                   ))}
                 </div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-                  {[90, 100, 75, 85, 0, 95, 60].map((w, i) =>
+                {/* Skeleton description — what you do get */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 5, marginBottom: 10 }}>
+                  {[90, 100, 75, 85, 0, 95].map((w, i) =>
                     w === 0
-                      ? <div key={i} style={{ height: 6 }} />
-                      : <div key={i} style={{ height: 8, background: RM.dummy, borderRadius: 3, width: `${w}%` }} />
+                      ? <div key={i} style={{ height: 4 }} />
+                      : <div key={i} style={{ height: 7, background: RM.dummy, borderRadius: 3, width: `${w}%` }} />
                   )}
                 </div>
-                <div style={{ marginTop: 12 }}>
-                  <div style={{ height: 10, background: RM.dummyDark, borderRadius: 3, width: 80, marginBottom: 6 }} />
-                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                    {[65, 80, 55, 70].map((w, i) => (
-                      <div key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        <div style={{ width: 4, height: 4, borderRadius: "50%", background: RM.dummyDark }} />
-                        <div style={{ height: 6, background: RM.dummy, borderRadius: 2, width: `${w}%` }} />
-                      </div>
-                    ))}
-                  </div>
+                {/* "Not included" — what Rightmove doesn't tell you */}
+                <div style={{ borderTop: `1px solid ${RM.dummy}`, paddingTop: 8, display: "flex", flexDirection: "column", gap: 4 }}>
+                  {[
+                    "Renovation cost",
+                    "Structural assessment",
+                    "What it could look like",
+                  ].map((label) => (
+                    <div key={label} style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                      <span style={{ fontSize: 10, color: "#CC6B5A", fontFamily: "'Inter',sans-serif", lineHeight: 1 }}>{"\u2715"}</span>
+                      <span style={{ fontSize: 9, color: RM.textMuted, fontFamily: "'Inter',sans-serif", letterSpacing: "0.01em" }}>{label}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
@@ -364,13 +388,199 @@ export default function DemoAnimation({ demoImage, demoAfterImage, demoInteriorI
           </div>
         </div>
 
-        {/* ═══════ PHASE 2 — Processing ═══════ */}
-        <div style={{ ...panelBase, ...hidden(2), justifyContent: "center", alignItems: "center", background: C.dark }}>
-          <div style={{ textAlign: "center", maxWidth: 320, width: "100%", padding: "0 20px" }}>
-            <div style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(14px,2.5vw,20px)", color: C.paper, marginBottom: 24, lineHeight: 1.3 }}>{name}</div>
-            <div style={{ width: 6, height: 6, borderRadius: "50%", background: C.accent, margin: "0 auto 20px", animation: "demo-pulse 1.5s ease-in-out infinite" }} />
-            <div style={{ fontFamily: "'EB Garamond',serif", fontStyle: "italic", fontSize: "clamp(13px,1.5vw,16px)", color: C.tertGrey, minHeight: 24 }}>
-              {PROCESSING_MSGS[procMsg]}
+        {/* ═══════ PHASE 2 — AI Pipeline Visualization ═══════ */}
+        <div style={{ ...panelBase, ...hidden(2), background: C.dark }}>
+          <div style={{ display: "flex", flexDirection: "column", height: "100%", padding: "clamp(16px,3vw,28px) clamp(20px,4vw,44px)" }}>
+
+            {/* Pipeline node indicator — horizontal chain */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "clamp(10px,2vw,20px)" }}>
+              {PIPE_STEPS.flatMap((_, i) => {
+                const done = i < procMsg;
+                const active = i === procMsg;
+                const items = [];
+                if (i > 0) {
+                  items.push(
+                    <div key={`l${i}`} style={{
+                      width: "clamp(16px,3vw,32px)", height: 1,
+                      background: done || active ? `${C.accent}50` : `${C.warmGrey}18`,
+                      transition: "background 0.5s",
+                    }} />
+                  );
+                }
+                items.push(
+                  <div key={`n${i}`} style={{
+                    width: "clamp(8px,1.2vw,11px)", height: "clamp(8px,1.2vw,11px)",
+                    borderRadius: "50%",
+                    background: active ? C.terracotta : done ? C.accent : `${C.warmGrey}25`,
+                    transition: "all 0.4s ease",
+                    boxShadow: active ? `0 0 10px ${C.terracotta}50, 0 0 20px ${C.terracotta}20` : "none",
+                    animation: active ? "demo-node-pulse 2s ease-in-out infinite" : "none",
+                    flexShrink: 0,
+                  }} />
+                );
+                return items;
+              })}
+            </div>
+
+            {/* Visual artifact area */}
+            <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
+
+              {/* Step 0: Reading the building — photo with scan overlay */}
+              {procMsg === 0 && (
+                <div style={{ textAlign: "center", animation: "demo-fade-in 0.4s ease both" }}>
+                  <div style={{ position: "relative", width: "clamp(160px,36%,240px)", margin: "0 auto 10px", borderRadius: 4, overflow: "hidden", boxShadow: `0 4px 24px rgba(0,0,0,0.3)` }}>
+                    <img src={demoImage} alt="" style={{ width: "100%", aspectRatio: "4/3", objectFit: "cover", display: "block" }} />
+                    <div style={{
+                      position: "absolute", top: 0, left: 0, right: 0, bottom: 0,
+                      background: `linear-gradient(transparent 45%, ${C.terracotta}15 50%, transparent 55%)`,
+                      backgroundSize: "100% 300%",
+                      animation: "demo-scan 2s linear infinite",
+                      pointerEvents: "none",
+                    }} />
+                  </div>
+                  <div style={{
+                    fontFamily: "'Bebas Neue',sans-serif",
+                    fontSize: "clamp(11px,1.5vw,15px)",
+                    letterSpacing: "0.08em",
+                    color: C.terracotta, opacity: 0.9,
+                  }}>
+                    {"INTERWAR SEMI \u00B7 1930\u20131945"}
+                  </div>
+                </div>
+              )}
+
+              {/* Step 1: Spotting issues — cards appearing */}
+              {procMsg === 1 && (
+                <div style={{ width: "clamp(220px,55%,340px)", animation: "demo-fade-in 0.4s ease both" }}>
+                  {[
+                    { issue: "Damp staining on chimney breast", sev: "moderate", c: C.clay },
+                    { issue: "Window seals dated throughout", sev: "minor", c: C.warmGrey },
+                    { issue: "Roof age unknown", sev: "investigate", c: C.terracotta },
+                  ].map((item, i) => (
+                    <div key={i} style={{
+                      display: "flex", justifyContent: "space-between", alignItems: "center",
+                      padding: "clamp(6px,1vw,10px) clamp(8px,1.2vw,14px)",
+                      background: C.darkMid, border: `1px solid ${C.bd}`,
+                      borderRadius: 4, marginBottom: i < 2 ? "clamp(4px,0.6vw,8px)" : 0,
+                    }}>
+                      <span style={{ fontFamily: "'EB Garamond',serif", fontSize: "clamp(11px,1.3vw,14px)", color: C.paper }}>{item.issue}</span>
+                      <span style={{
+                        fontFamily: "'Inter',sans-serif", fontSize: "clamp(7px,0.8vw,9px)",
+                        letterSpacing: "0.06em", textTransform: "uppercase",
+                        color: item.c, fontWeight: 600, flexShrink: 0, marginLeft: 12,
+                      }}>{item.sev}</span>
+                    </div>
+                  ))}
+                  <div style={{ fontFamily: "'Inter',sans-serif", fontSize: "clamp(8px,0.9vw,10px)", color: `${C.warmGrey}99`, marginTop: "clamp(6px,1vw,10px)" }}>
+                    + 5 unknowns flagged for site visit
+                  </div>
+                </div>
+              )}
+
+              {/* Step 2: Designing — palette swatches + mood */}
+              {procMsg === 2 && (
+                <div style={{ width: "clamp(220px,55%,320px)", textAlign: "center", animation: "demo-fade-in 0.4s ease both" }}>
+                  <div style={{ display: "flex", gap: "clamp(4px,0.6vw,8px)", marginBottom: "clamp(10px,1.5vw,16px)" }}>
+                    {[
+                      { hex: C.accent, name: "Raw linen" },
+                      { hex: C.sage, name: "Sage" },
+                      { hex: C.terracotta, name: "Terracotta" },
+                      { hex: C.clay, name: "Clay" },
+                      { hex: C.accentDark, name: "Aged brass" },
+                    ].map((col, i) => (
+                      <div key={i} style={{ flex: 1 }}>
+                        <div style={{ height: "clamp(24px,4vw,40px)", borderRadius: 3, background: col.hex, border: `1px solid ${C.bd}` }} />
+                        <div style={{ fontFamily: "'EB Garamond',serif", fontSize: "clamp(7px,0.8vw,9px)", color: C.warmGrey, marginTop: 4, lineHeight: 1.2 }}>{col.name}</div>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{
+                    fontFamily: "'Playfair Display',serif",
+                    fontSize: "clamp(13px,1.6vw,17px)",
+                    fontStyle: "italic", color: C.accent,
+                    lineHeight: 1.5, opacity: 0.8,
+                  }}>
+                    {"\u201Chonest, warm, rooted in place\u201D"}
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "center", gap: "clamp(8px,1.2vw,14px)", marginTop: "clamp(8px,1vw,12px)" }}>
+                    {["Lime plaster", "Engineered oak", "Reclaimed stone"].map((m, i) => (
+                      <span key={i} style={{ fontFamily: "'Inter',sans-serif", fontSize: "clamp(8px,0.9vw,10px)", color: C.warmGrey, letterSpacing: "0.02em" }}>{m}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Step 3: Seeing the difference — before/after */}
+              {procMsg === 3 && (
+                <div style={{ width: "clamp(260px,65%,400px)", animation: "demo-fade-in 0.4s ease both" }}>
+                  <div style={{ display: "flex", gap: "clamp(4px,0.6vw,8px)", borderRadius: 4, overflow: "hidden" }}>
+                    <div style={{ flex: 1, position: "relative" }}>
+                      <img src={demoInteriorImage || demoImage} alt="" style={{ width: "100%", aspectRatio: "4/3", objectFit: "cover", display: "block", filter: "saturate(0.7)" }} />
+                      <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "14px 8px 4px", background: "linear-gradient(transparent, rgba(0,0,0,0.7))" }}>
+                        <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: "clamp(9px,1.1vw,12px)", color: "#fff", opacity: 0.8, letterSpacing: "0.1em" }}>NOW</span>
+                      </div>
+                    </div>
+                    <div style={{ flex: 1, position: "relative" }}>
+                      <img src={demoInteriorAfterImage || demoAfterImage || demoImage} alt="" style={{ width: "100%", aspectRatio: "4/3", objectFit: "cover", display: "block" }} />
+                      <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "14px 8px 4px", background: "linear-gradient(transparent, rgba(0,0,0,0.5))" }}>
+                        <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: "clamp(9px,1.1vw,12px)", color: C.paper, opacity: 0.9, letterSpacing: "0.1em" }}>AFTER</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Step 4: Writing the reading — mini report silhouette */}
+              {procMsg === 4 && (
+                <div style={{ width: "clamp(150px,32%,200px)", animation: "demo-fade-in 0.4s ease both" }}>
+                  <div style={{ background: C.darkMid, borderRadius: 4, border: `1px solid ${C.bd}`, overflow: "hidden", boxShadow: `0 4px 24px rgba(0,0,0,0.3)` }}>
+                    <div style={{ background: C.dark, padding: "8px 10px 6px" }}>
+                      <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 7, fontStyle: "italic", color: C.accent }}>Piega</div>
+                      <div style={{ height: 3, background: C.accent, width: "60%", borderRadius: 1, marginTop: 4, opacity: 0.3 }} />
+                    </div>
+                    <div style={{ height: 36, position: "relative" }}>
+                      <img src={demoAfterImage || demoImage} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0.6 }} />
+                    </div>
+                    <div style={{ background: "#FAF8F5", padding: "6px 10px 8px" }}>
+                      {[1, 2, 3, 4].map((ch) => (
+                        <div key={ch} style={{ marginBottom: 4 }}>
+                          <div style={{ height: 2, background: "#DFDAD4", borderRadius: 1, width: `${40 + ch * 8}%`, marginBottom: 2 }} />
+                          <div style={{ height: 1.5, background: "#ECEAE6", borderRadius: 1, width: "90%" }} />
+                          <div style={{ height: 1.5, background: "#ECEAE6", borderRadius: 1, width: "70%", marginTop: 1 }} />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div style={{
+                    fontFamily: "'Bebas Neue',sans-serif",
+                    fontSize: "clamp(10px,1.2vw,13px)",
+                    letterSpacing: "0.1em", color: C.sage,
+                    textAlign: "center", marginTop: "clamp(8px,1vw,12px)",
+                  }}>
+                    READY.
+                  </div>
+                </div>
+              )}
+
+            </div>
+
+            {/* Step label + result */}
+            <div style={{ textAlign: "center", marginTop: "clamp(8px,1.5vw,16px)" }}>
+              <div style={{
+                fontFamily: "'Playfair Display',serif",
+                fontSize: "clamp(14px,1.8vw,18px)",
+                fontStyle: "italic", color: C.paper,
+              }}>
+                {PIPE_STEPS[procMsg]?.label}
+              </div>
+              <div style={{
+                fontFamily: "'Inter',sans-serif",
+                fontSize: "clamp(9px,1vw,11px)",
+                color: C.warmGrey,
+                marginTop: 3, letterSpacing: "0.03em",
+              }}>
+                {PIPE_STEPS[procMsg]?.result}
+              </div>
             </div>
           </div>
         </div>
@@ -393,8 +603,29 @@ export default function DemoAnimation({ demoImage, demoAfterImage, demoInteriorI
 
             {/* Scrolling content — auto-scrolls through the report */}
             <div style={{
-              animation: phase === 3 ? "demo-report-scroll 5.2s ease-in-out 0.5s both" : "none",
+              animation: phase === 3 ? "demo-report-scroll 4.6s ease-in-out 0.4s both" : "none",
             }}>
+
+              {/* ── 0. TRANSFORMATION HERO — before → after ── */}
+              <div style={{ background: C.dark, padding: "10px 10px 8px", position: "relative" }}>
+                <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 7, letterSpacing: "0.2em", color: C.terracotta, marginBottom: 5, textAlign: "center" }}>WHAT IT IS. WHAT IT COULD BE.</div>
+                <div style={{ display: "flex", gap: 4, borderRadius: 4, overflow: "hidden" }}>
+                  {/* Before — raw interior */}
+                  <div style={{ flex: 1, position: "relative", overflow: "hidden" }}>
+                    <img src={demoInteriorImage || demoImage} alt="" style={{ width: "100%", height: 75, objectFit: "cover", display: "block", filter: "saturate(0.7)" }} />
+                    <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "12px 6px 3px", background: "linear-gradient(transparent, rgba(0,0,0,0.7))" }}>
+                      <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 7, color: "#fff", opacity: 0.8, letterSpacing: "0.1em" }}>BEFORE</span>
+                    </div>
+                  </div>
+                  {/* After — renovated */}
+                  <div style={{ flex: 1, position: "relative", overflow: "hidden" }}>
+                    <img src={demoInteriorAfterImage || demoAfterImage || demoImage} alt="" style={{ width: "100%", height: 75, objectFit: "cover", display: "block" }} />
+                    <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "12px 6px 3px", background: "linear-gradient(transparent, rgba(0,0,0,0.5))" }}>
+                      <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 7, color: C.paper, opacity: 0.9, letterSpacing: "0.1em" }}>AFTER</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
 
               {/* ── 1. DARK HERO ── */}
               <div style={{ background: C.dark, padding: "12px 16px 14px", position: "relative", overflow: "hidden" }}>

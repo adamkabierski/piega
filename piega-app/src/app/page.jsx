@@ -5,7 +5,57 @@ import { C } from "@/lib/theme";
 import { AGENTS_URL } from "@/lib/config";
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   CARD REVEAL — scroll-triggered fade+rise
+   CSS — grid, responsive, utility classes
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+const STYLES = `
+  * { box-sizing: border-box; }
+  ::selection { background: ${C.terracotta}; color: ${C.paper}; }
+
+  .piega-mosaic {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: 10px;
+    grid-auto-flow: dense;
+    align-items: start;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+  .piega-large  { grid-column: span 7; }
+  .piega-medium { grid-column: span 4; }
+  .piega-small  { grid-column: span 2; }
+  .piega-text   { grid-column: span 4; }
+  .piega-video  { grid-column: span 5; }
+
+  @media (max-width: 1024px) {
+    .piega-mosaic { grid-template-columns: repeat(6, 1fr); gap: 8px; }
+    .piega-large  { grid-column: span 6; }
+    .piega-medium { grid-column: span 3; }
+    .piega-small  { grid-column: span 2; }
+    .piega-text   { grid-column: span 3; }
+    .piega-video  { grid-column: span 4; }
+  }
+
+  @media (max-width: 640px) {
+    .piega-mosaic { grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .piega-large  { grid-column: span 4; }
+    .piega-medium { grid-column: span 4; }
+    .piega-small  { grid-column: span 2; }
+    .piega-text   { grid-column: span 4; }
+    .piega-video  { grid-column: span 4; }
+  }
+
+  .piega-desktop-only { display: block; }
+  .piega-mobile-only  { display: none; }
+  @media (max-width: 768px) {
+    .piega-desktop-only { display: none !important; }
+    .piega-mobile-only  { display: block !important; }
+  }
+`;
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   HOOKS
    ═══════════════════════════════════════════════════════════════════════════ */
 
 function useReveal(threshold = 0.08) {
@@ -24,248 +74,542 @@ function useReveal(threshold = 0.08) {
   return [ref, visible];
 }
 
-function CardReveal({ children, delay = 0 }) {
-  const [ref, v] = useReveal();
+function useInView(threshold = 0.2) {
+  const ref = useRef(null);
+  const [inView, setInView] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([e]) => setInView(e.isIntersecting),
+      { threshold },
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [threshold]);
+  return [ref, inView];
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   DATA — Extract mosaic blocks from pipeline reports
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+function reportToBlocks(report) {
+  const blocks = [];
+  const r = report.results ?? {};
+  const listing = report.listing ?? {};
+  const vis = r.renovation_visualisation;
+  const classification = r.classification;
+  const costEstimate = r.cost_estimate;
+  const designBrief = r.design_brief;
+  const narrative = r.narrative;
+  const videoFacade = r.video_facade;
+  const archetype = classification?.archetype;
+
+  const propertyName = listing.address?.split(",")[0]?.trim() ?? "Property";
+  const archetypeTag = archetype
+    ? `${archetype.era} \u00B7 ${archetype.displayName}` : "";
+  const priceStr = listing.askingPrice
+    ? `\u00A3${Math.round(listing.askingPrice / 1000)}K` : "";
+
+  // Interiors → large sliders (first 2), then medium composites
+  if (vis?.interiors?.length) {
+    vis.interiors.forEach((img, i) => {
+      blocks.push({
+        type: i < 2 ? "large_slider" : "medium_composite",
+        beforeImage: img.originalUrl,
+        afterImage: img.renovatedUrl,
+        room: img.room ?? img.depicts ?? "Interior",
+        propertyName, archetype: archetypeTag, price: priceStr,
+        reportId: report.id,
+      });
+    });
+  }
+
+  // Exteriors → medium composites
+  if (vis?.exteriors?.length) {
+    vis.exteriors.forEach((img) => {
+      blocks.push({
+        type: "medium_composite",
+        beforeImage: img.originalUrl,
+        afterImage: img.renovatedUrl,
+        room: img.depicts ?? "Exterior",
+        propertyName, reportId: report.id,
+      });
+    });
+  }
+
+  // After-only thumbnails
+  const allVis = [...(vis?.interiors ?? []), ...(vis?.exteriors ?? [])];
+  allVis.forEach((img) => {
+    blocks.push({
+      type: "small_after",
+      image: img.renovatedUrl,
+      alt: `${propertyName} \u2014 ${img.room ?? img.depicts ?? "renovated"}`,
+      reportId: report.id,
+    });
+  });
+
+  // Palette swatches
+  const palette = designBrief?.designLanguage?.palette;
+  if (palette?.length >= 3) {
+    blocks.push({
+      type: "small_palette",
+      colours: palette.slice(0, 5).map((p) => p.name ?? p),
+      hexValues: palette.slice(0, 5).map((p) => p.hex ?? "#B8A99A"),
+      reportId: report.id,
+    });
+  }
+
+  // Material spec
+  const mats = designBrief?.designLanguage?.materials;
+  if (mats?.length) {
+    blocks.push({
+      type: "small_material",
+      materials: mats.slice(0, 3).map((m) => (typeof m === "string" ? m : m.name ?? m)),
+      reportId: report.id,
+    });
+  }
+
+  // Cost estimate → big number
+  const env = costEstimate?.totalEnvelope;
+  if (env) {
+    const lo = Math.round((env.low ?? env.min ?? 0) / 1000);
+    const hi = Math.round((env.high ?? env.max ?? 0) / 1000);
+    if (lo > 0 && hi > 0) {
+      blocks.push({
+        type: "text_number",
+        number: `\u00A3${lo}K \u2013 \u00A3${hi}K`,
+        label: "estimated renovation",
+        subtitle: `${archetypeTag}${archetypeTag && propertyName ? " \u00B7 " : ""}${propertyName}`,
+        reportId: report.id,
+      });
+    }
+  }
+
+  // Video facade
+  if (videoFacade?.videoUrl) {
+    blocks.push({
+      type: "video",
+      videoUrl: videoFacade.videoUrl,
+      propertyName, reportId: report.id,
+    });
+  }
+
+  // Narrative hook
+  if (narrative?.openingHook) {
+    blocks.push({
+      type: "text_hook",
+      text: narrative.openingHook,
+      reportId: report.id,
+    });
+  }
+
+  return blocks;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   HARDCODED TEXT BLOCKS — personality, zero AI risk
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+const TEXT_BLOCKS = [
+  {
+    _key: "tb-cost", variant: "confrontation",
+    lines: ["AN ARCHITECT CHARGES \u00A32,000.", "A SURVEYOR \u00A3500.", "A DESIGNER \u00A33,000."],
+    punchline: "We did all three.\nFrom a Rightmove link.",
+  },
+  {
+    _key: "tb-time", variant: "time",
+    number: "90 SECONDS.",
+    lines: ["From listing to renovation concept.", "Including the cost estimate", "your builder won\u2019t give you."],
+  },
+  {
+    _key: "tb-hook", variant: "hook",
+    text: "\u201CThe estate agent calls it \u2018characterful.\u2019\nThe surveyor would call it \u2018structural movement.\u2019\nWe call it Thursday.\u201D",
+  },
+];
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BLOCK COMPONENTS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ---------- Large before/after slider ---------- */
+
+function LargeSlider({ block }) {
+  const [split, setSplit] = useState(50);
+  const [dragged, setDragged] = useState(false);
+  const cRef = useRef(null);
+  const move = (cx) => {
+    if (!cRef.current) return;
+    const r = cRef.current.getBoundingClientRect();
+    setSplit(Math.max(5, Math.min(95, ((cx - r.left) / r.width) * 100)));
+  };
+
   return (
-    <div ref={ref} style={{
-      opacity: v ? 1 : 0,
-      transform: v ? "translateY(0)" : "translateY(18px)",
-      transition: `opacity 0.55s ease ${delay}s, transform 0.55s ease ${delay}s`,
-    }}>
-      {children}
+    <>
+      <div
+        ref={cRef}
+        style={{
+          position: "relative", width: "100%", aspectRatio: "2/1",
+          borderRadius: 6, overflow: "hidden",
+          cursor: "ew-resize", userSelect: "none",
+          background: C.darkMid,
+        }}
+        onMouseDown={() => setDragged(false)}
+        onMouseMove={(e) => { if (e.buttons === 1) { setDragged(true); move(e.clientX); } }}
+        onTouchMove={(e) => { setDragged(true); move(e.touches[0].clientX); }}
+      >
+        <img src={block.afterImage} alt="" loading="lazy"
+          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+          onError={(e) => { e.target.style.display = "none"; }} />
+        <div style={{ position: "absolute", inset: 0, clipPath: `inset(0 ${100 - split}% 0 0)` }}>
+          <img src={block.beforeImage} alt="" loading="lazy"
+            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+            onError={(e) => { e.target.style.display = "none"; }} />
+        </div>
+        <div style={{ position: "absolute", bottom: 10, left: 12, fontFamily: "'Bebas Neue',sans-serif", fontSize: 11, color: C.paper, opacity: 0.6, letterSpacing: "0.06em", textShadow: "0 1px 4px rgba(0,0,0,0.6)" }}>NOW</div>
+        <div style={{ position: "absolute", bottom: 10, right: 12, fontFamily: "'Bebas Neue',sans-serif", fontSize: 11, color: C.paper, opacity: 0.6, letterSpacing: "0.06em", textShadow: "0 1px 4px rgba(0,0,0,0.6)" }}>POSSIBLE</div>
+        <div style={{ position: "absolute", top: 0, bottom: 0, left: `${split}%`, width: 2, background: C.paper, opacity: 0.5, transform: "translateX(-1px)" }}>
+          <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: 28, height: 28, borderRadius: "50%", background: "rgba(26,24,22,0.6)", border: "1.5px solid rgba(250,248,245,0.5)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Inter',sans-serif", fontSize: 9, color: C.paper, opacity: 0.8 }}>\u2194</div>
+        </div>
+      </div>
+      <div style={{ padding: "8px 2px 0", display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8 }}>
+        <div>
+          <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 15, fontWeight: 700, color: C.charcoal }}>{block.propertyName}</div>
+          {block.archetype && <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 9, color: C.warmGrey, letterSpacing: "0.06em", textTransform: "uppercase", marginTop: 1 }}>{block.archetype}</div>}
+        </div>
+        {block.price && <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 18, color: C.clay }}>{block.price}</div>}
+      </div>
+    </>
+  );
+}
+
+/* ---------- Medium composite (side-by-side, hover crossfade) ---------- */
+
+function MediumComposite({ block }) {
+  const [hovered, setHovered] = useState(false);
+  const inner = (
+    <div
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      <div style={{ position: "relative", width: "100%", aspectRatio: "2/1", borderRadius: 6, overflow: "hidden", background: C.darkMid, cursor: "pointer" }}>
+        <img src={block.afterImage} alt="" loading="lazy"
+          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+          onError={(e) => { e.target.style.display = "none"; }} />
+        <div style={{ position: "absolute", inset: 0, clipPath: "inset(0 50% 0 0)", opacity: hovered ? 0 : 1, transition: "opacity 1.5s ease" }}>
+          <img src={block.beforeImage} alt="" loading="lazy"
+            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+            onError={(e) => { e.target.style.display = "none"; }} />
+        </div>
+        <div style={{ position: "absolute", top: 0, bottom: 0, left: "50%", width: 1, background: C.paper, opacity: hovered ? 0 : 0.3, transition: "opacity 0.5s ease" }} />
+      </div>
+      <div style={{ padding: "5px 2px 0" }}>
+        <span style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: C.warmGrey }}>{block.propertyName} \u00B7 {block.room}</span>
+      </div>
+    </div>
+  );
+
+  if (block.reportId) {
+    return <Link href={`/report/${block.reportId}`} style={{ textDecoration: "none", color: "inherit" }}>{inner}</Link>;
+  }
+  return inner;
+}
+
+/* ---------- Small after-only thumbnail ---------- */
+
+function SmallAfter({ block }) {
+  const [h, setH] = useState(false);
+  const inner = (
+    <div
+      onMouseEnter={() => setH(true)} onMouseLeave={() => setH(false)}
+      style={{ transform: h ? "translateY(-3px)" : "translateY(0)", transition: "transform 0.25s ease" }}
+    >
+      <div style={{ width: "100%", aspectRatio: "1/1", borderRadius: 6, overflow: "hidden", border: `1px solid ${h ? C.bdh : C.bd}`, transition: "border-color 0.25s ease", background: C.darkMid }}>
+        <img src={block.image} alt={block.alt ?? ""} loading="lazy"
+          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+          onError={(e) => { e.target.style.display = "none"; }} />
+      </div>
+    </div>
+  );
+  if (block.reportId) {
+    return <Link href={`/report/${block.reportId}`} style={{ textDecoration: "none", color: "inherit" }}>{inner}</Link>;
+  }
+  return inner;
+}
+
+/* ---------- Small palette swatches ---------- */
+
+function SmallPalette({ block }) {
+  return (
+    <div style={{ width: "100%", aspectRatio: "1/1", borderRadius: 6, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+      {block.hexValues.map((hex, i) => (
+        <div key={i} style={{ flex: 1, background: hex, display: "flex", alignItems: "flex-end", padding: "0 6px 3px" }}>
+          <span style={{ fontFamily: "'Inter',sans-serif", fontSize: 7, color: "rgba(255,255,255,0.7)", letterSpacing: "0.04em" }}>{block.colours[i]}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ---------- Small material spec ---------- */
+
+function SmallMaterial({ block }) {
+  return (
+    <div style={{ width: "100%", aspectRatio: "1/1", borderRadius: 6, background: C.dark, display: "flex", flexDirection: "column", justifyContent: "center", padding: "12px 14px", gap: 6 }}>
+      {block.materials.map((m, i) => (
+        <div key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <div style={{ width: 5, height: 5, borderRadius: "50%", background: [C.clay, C.sage, C.accent][i % 3], opacity: 0.6 }} />
+          <span style={{ fontFamily: "'EB Garamond',serif", fontSize: 11, fontStyle: "italic", color: C.paper, opacity: 0.7 }}>{m}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ---------- Text block (all variants) ---------- */
+
+function TextBlock({ block }) {
+  const base = { width: "100%", minHeight: 160, borderRadius: 6, background: C.dark, display: "flex", flexDirection: "column", justifyContent: "center", padding: "24px 20px" };
+
+  if (block.variant === "confrontation") {
+    return (
+      <div style={base}>
+        {block.lines.map((line, i) => (
+          <div key={i} style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 15, color: C.paper, opacity: 0.25, letterSpacing: "0.04em", lineHeight: 1.5 }}>{line}</div>
+        ))}
+        <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 17, fontStyle: "italic", color: C.terracotta, marginTop: 12, lineHeight: 1.5, whiteSpace: "pre-line" }}>{block.punchline}</div>
+      </div>
+    );
+  }
+
+  if (block.variant === "time") {
+    return (
+      <div style={base}>
+        <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: "clamp(36px,5vw,56px)", color: C.paper, letterSpacing: "0.02em", lineHeight: 1 }}>{block.number}</div>
+        {block.lines.map((line, i) => (
+          <div key={i} style={{ fontFamily: "'EB Garamond',serif", fontSize: 14, fontStyle: "italic", color: C.warmGrey, lineHeight: 1.6, marginTop: i === 0 ? 10 : 0 }}>{line}</div>
+        ))}
+      </div>
+    );
+  }
+
+  if (block.variant === "hook" || block.type === "text_hook") {
+    return (
+      <div style={{ ...base, alignItems: "stretch", borderLeft: `3px solid ${C.terracotta}` }}>
+        <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 15, fontStyle: "italic", color: C.paper, lineHeight: 1.7, whiteSpace: "pre-line" }}>{block.text}</div>
+      </div>
+    );
+  }
+
+  if (block.type === "text_number") {
+    return (
+      <div style={{ ...base, alignItems: "center", textAlign: "center" }}>
+        <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: "clamp(32px,4vw,52px)", color: C.terracotta, letterSpacing: "0.02em", lineHeight: 1 }}>{block.number}</div>
+        <div style={{ fontFamily: "'EB Garamond',serif", fontSize: 13, fontStyle: "italic", color: C.warmGrey, marginTop: 8 }}>{block.label}</div>
+        {block.subtitle && <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 9, color: C.warmGrey, opacity: 0.5, marginTop: 4, letterSpacing: "0.04em" }}>{block.subtitle}</div>}
+      </div>
+    );
+  }
+
+  return null;
+}
+
+/* ---------- Video block ---------- */
+
+function VideoBlock({ block }) {
+  const [ref, inView] = useInView(0.1);
+  const videoRef = useRef(null);
+  useEffect(() => {
+    if (!videoRef.current) return;
+    if (inView) videoRef.current.play().catch(() => {});
+    else videoRef.current.pause();
+  }, [inView]);
+
+  return (
+    <div ref={ref} style={{ width: "100%", aspectRatio: "16/9", borderRadius: 6, overflow: "hidden", position: "relative", background: C.dark }}>
+      <video ref={videoRef} src={block.videoUrl} muted loop playsInline
+        style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+      <div style={{ position: "absolute", bottom: 8, right: 10, fontFamily: "'Bebas Neue',sans-serif", fontSize: 9, color: C.paper, opacity: 0.4, letterSpacing: "0.08em" }}>FACADE \u00B7 4 SEC</div>
+    </div>
+  );
+}
+
+/* ---------- Mosaic block dispatcher ---------- */
+
+function MosaicBlock({ block, index }) {
+  const delay = Math.min(index * 0.06, 0.6);
+  const [ref, v] = useReveal();
+
+  const classMap = {
+    large_slider: "piega-large", medium_composite: "piega-medium",
+    small_after: "piega-small", small_palette: "piega-small", small_material: "piega-small",
+    text_number: "piega-text", text_hook: "piega-text",
+    video: "piega-video",
+  };
+  const gridClass = block.variant ? "piega-text" : (classMap[block.type] ?? "piega-small");
+
+  return (
+    <div
+      ref={ref}
+      className={gridClass}
+      style={{
+        opacity: v ? 1 : 0,
+        transform: v ? "translateY(0)" : "translateY(14px)",
+        transition: `opacity 0.4s ease ${delay}s, transform 0.4s ease ${delay}s`,
+      }}
+    >
+      {block.type === "large_slider" && <LargeSlider block={block} />}
+      {block.type === "medium_composite" && <MediumComposite block={block} />}
+      {block.type === "small_after" && <SmallAfter block={block} />}
+      {block.type === "small_palette" && <SmallPalette block={block} />}
+      {block.type === "small_material" && <SmallMaterial block={block} />}
+      {block.type === "video" && <VideoBlock block={block} />}
+      {(block.variant || block.type === "text_number" || block.type === "text_hook") && <TextBlock block={block} />}
     </div>
   );
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   FALLBACK CARDS — handcrafted demo reports (shown only when no pipeline
-   reports are available or as supplements to a thin pipeline)
+   DEMO ANIMATION — 4-phase loop showing the product journey
+   Phase 0: Rightmove listing
+   Phase 1: Extension popup + "Analyse"
+   Phase 2: Pipeline agents completing
+   Phase 3: Report output
    ═══════════════════════════════════════════════════════════════════════════ */
 
-const FALLBACK_CARDS = [
-  {
-    id: "woodbury",
-    href: "/reports/woodbury",
-    heroImage: "/House_1/slot4.jpg",
-    name: "Woodbury",
-    tag: "Auction · Split-level detached",
-    location: "Woodbury Hill Path, Luton, LU2 7JR · 4 bed · Detached · Freehold",
-    price: "£340K+",
-    hookLine: "Someone else's unfinished project. Possibly your perfect beginning.",
-    publishedAt: "2026-03-27T09:00:00Z",
-  },
-  {
-    id: "cherry-cottage",
-    href: "/reports/cherry-cottage",
-    heroImage: "/House_2/slot1.jpg",
-    name: "Cherry Cottage",
-    tag: "Grade II · Thatched cottage",
-    location: "Alton Pancras, Dorchester, Dorset, DT2 7RW · 2 bed · Thatched",
-    price: "£200K",
-    hookLine: "The panelling is Georgian. The damp behind it is older. You are buying both.",
-    publishedAt: "2026-03-21T10:00:00Z",
-  },
+const DEMO_AGENTS = ["Classification", "Architectural Reading", "Design Brief", "Renovation Visualiser", "Cost Estimate"];
+const PHASE_DURATIONS = [3000, 2500, 2500, 4000];
+const PHASE_LABELS = [
+  "You\u2019re browsing Rightmove. As usual.",
+  "One click. We read every photo, every detail.",
+  "Six specialists. 90 seconds. Zero phone calls.",
+  "The full reading. Every room. Every cost.\nEvery issue the estate agent didn\u2019t mention.",
 ];
 
-/* ═══════════════════════════════════════════════════════════════════════════
-   HELPERS
-   ═══════════════════════════════════════════════════════════════════════════ */
+function DemoAnimation({ demoImage, demoAfterImage, demoCost, demoName }) {
+  const [containerRef, inView] = useInView(0.2);
+  const [phase, setPhase] = useState(0);
+  const timeoutRef = useRef(null);
+  const phaseRef = useRef(0);
 
-function relativeTime(iso) {
-  if (!iso) return "";
-  const diff = Date.now() - new Date(iso).getTime();
-  const days = Math.floor(diff / 86400000);
-  if (days < 1) return "today";
-  if (days === 1) return "yesterday";
-  if (days < 7) return `${days} days ago`;
-  if (days < 14) return "last week";
-  if (days < 30) return `${Math.floor(days / 7)} weeks ago`;
-  const d = new Date(iso);
-  return d.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
-}
-
-/** Pick the best hero image: renovated exterior > best listing photo */
-function pickHeroImage(report) {
-  const r = report.results ?? {};
-  const listing = report.listing ?? {};
-
-  // Best: renovated exterior from the visualiser
-  const vis = r.renovation_visualisation;
-  if (vis?.exteriors?.length) return vis.exteriors[0].renovatedUrl;
-
-  // Good: highest-rated exterior from classifier
-  const classified = r.classification?.classifiedImages;
-  if (classified?.length) {
-    const bestExterior = classified.find(
-      (img) => img.type === "exterior" && img.usefulness === "high"
-    ) ?? classified.find((img) => img.type === "exterior");
-    if (bestExterior) {
-      const photos = listing.photos ?? [];
-      const photo = photos[bestExterior.imageIndex];
-      if (photo?.url) return photo.url;
+  useEffect(() => {
+    if (!inView) {
+      clearTimeout(timeoutRef.current);
+      return;
     }
-  }
+    phaseRef.current = 0;
+    setPhase(0);
 
-  // Fallback: first listing photo
-  return listing.photos?.[0]?.url ?? null;
-}
-
-/** Convert a pipeline report into a card shape */
-function reportToCard(report) {
-  const r = report.results ?? {};
-  const listing = report.listing ?? {};
-  const classification = r.classification;
-  const archetype = classification?.archetype;
-  const narrative = r.narrative;
-
-  const card = r.landing_card;
-  if (card) {
-    return {
-      id: report.id,
-      href: `/report/${report.id}`,
-      heroImage: card.heroImage ?? pickHeroImage(report),
-      name: card.name ?? listing.address?.split(",")[0] ?? "Property",
-      tag: card.tag ?? (archetype ? `${archetype.era} · ${archetype.displayName}` : ""),
-      location: card.location ?? listing.address,
-      price: card.price ?? (listing.askingPrice ? `\u00A3${Math.round(listing.askingPrice / 1000)}K` : ""),
-      hookLine: card.hookLine ?? narrative?.openingHook ?? classification?.summary ?? "",
-      publishedAt: card.publishedAt ?? report.created_at,
+    const next = () => {
+      timeoutRef.current = setTimeout(() => {
+        phaseRef.current = (phaseRef.current + 1) % 4;
+        setPhase(phaseRef.current);
+        next();
+      }, PHASE_DURATIONS[phaseRef.current]);
     };
-  }
+    next();
+    return () => clearTimeout(timeoutRef.current);
+  }, [inView]);
 
-  const addr = listing.address ?? "";
-  const firstPart = addr.split(",")[0]?.trim() ?? "Property";
-  const priceStr = listing.askingPrice ? `\u00A3${Math.round(listing.askingPrice / 1000)}K` : "";
-  const tagStr = archetype
-    ? [archetype.era, archetype.displayName].filter(Boolean).join(" \u00B7 ")
-    : listing.propertyType ?? "";
-  const locStr = [
-    addr,
-    listing.bedrooms ? `${listing.bedrooms} bed` : null,
-    listing.propertyType,
-  ].filter(Boolean).join(" \u00B7 ");
-  const hook = narrative?.openingHook ?? classification?.summary ?? "";
-
-  return {
-    id: report.id,
-    href: `/report/${report.id}`,
-    heroImage: pickHeroImage(report),
-    name: firstPart,
-    tag: tagStr,
-    location: locStr,
-    price: priceStr,
-    hookLine: hook,
-    publishedAt: report.created_at,
-  };
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
-   PROPERTY CARD — photo, tag, name, price, location, hook line. Nothing else.
-   ═══════════════════════════════════════════════════════════════════════════ */
-
-function PropertyCard({ card }) {
-  const [hovered, setHovered] = useState(false);
-
-  const inner = (
-    <>
-      {card.heroImage && (
-        <img
-          src={card.heroImage}
-          alt=""
-          style={{
-            width: "100%", aspectRatio: "2/1", objectFit: "cover", display: "block",
-          }}
-        />
-      )}
-
-      <div style={{ padding: "14px 18px 18px", flex: 1, display: "flex", flexDirection: "column" }}>
-        {/* Tag + Timestamp */}
-        <div style={{
-          display: "flex", justifyContent: "space-between", alignItems: "baseline",
-          marginBottom: 6,
-        }}>
-          <span style={{
-            fontFamily: "'EB Garamond',serif", fontSize: 8,
-            letterSpacing: "0.2em", textTransform: "uppercase",
-            color: C.terracotta, opacity: 0.55,
-          }}>
-            {card.tag}
-          </span>
-          <span style={{
-            fontFamily: "'Inter',sans-serif", fontSize: 8,
-            color: C.warmGrey, opacity: 0.4,
-          }}>
-            {relativeTime(card.publishedAt)}
-          </span>
-        </div>
-
-        {/* Name + Price */}
-        <div style={{
-          display: "flex", justifyContent: "space-between", alignItems: "baseline",
-          marginBottom: 3,
-        }}>
-          <div style={{
-            fontFamily: "'Playfair Display',serif",
-            fontSize: "clamp(18px,2.4vw,22px)", fontWeight: 700,
-            lineHeight: 1.1, color: C.paper,
-          }}>
-            {card.name}
-          </div>
-          {card.price && (
-            <div style={{
-              fontFamily: "'Bebas Neue',sans-serif",
-              fontSize: "clamp(16px,2vw,20px)",
-              letterSpacing: "0.04em",
-              color: C.accentDark,
-              flexShrink: 0, marginLeft: 12,
-            }}>
-              {card.price}
-            </div>
-          )}
-        </div>
-
-        {/* Location */}
-        <div style={{
-          fontFamily: "'EB Garamond',serif", fontSize: 11,
-          color: `${C.tertGrey}75`, letterSpacing: "0.04em",
-          lineHeight: 1.5, marginBottom: 12,
-        }}>
-          {card.location}
-        </div>
-
-        {/* Hook line */}
-        {card.hookLine && (
-          <div style={{
-            fontFamily: "'Playfair Display',serif", fontStyle: "italic",
-            fontSize: 12, lineHeight: 1.6,
-            color: C.accent, paddingLeft: 10,
-            borderLeft: `2px solid ${C.terracotta}55`,
-            opacity: 0.65, flex: 1,
-          }}>
-            {card.hookLine}
-          </div>
-        )}
-      </div>
-    </>
-  );
-
-  const shared = {
-    display: "flex", flexDirection: "column",
-    background: C.darkCard,
-    border: `1px solid ${hovered ? C.bdh : C.bd}`,
-    overflow: "hidden",
-    transition: "border-color .4s, transform .4s",
-    transform: hovered ? "translateY(-4px)" : "none",
-    textDecoration: "none", color: "inherit",
-    cursor: "pointer",
-  };
+  const panelBase = { position: "absolute", inset: 0, padding: "clamp(20px,4vw,40px)", display: "flex", flexDirection: "column", transition: "all 0.6s ease" };
+  const hidden = (p) => ({ opacity: phase === p ? 1 : 0, transform: phase === p ? "translateX(0)" : `translateX(${phase > p ? "-30px" : "30px"})`, pointerEvents: phase === p ? "auto" : "none" });
+  const name = demoName ?? "14 Woodbury Hill Path";
+  const cost = demoCost ?? "\u00A322K \u2013 \u00A362K";
 
   return (
-    <Link href={card.href} style={shared}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}>
-      {inner}
-    </Link>
+    <div ref={containerRef} style={{ maxWidth: 900, margin: "0 auto", background: C.darkCard, borderRadius: 8, overflow: "hidden", position: "relative", aspectRatio: "16/9", minHeight: 320 }}>
+
+      {/* PHASE 0 — Rightmove listing */}
+      <div style={{ ...panelBase, ...hidden(0) }}>
+        <div style={{ height: 4, background: "#00B140", width: 80, borderRadius: 2, marginBottom: 20 }} />
+        <div style={{ display: "flex", gap: "clamp(12px,2vw,20px)", flex: 1, alignItems: "flex-start" }}>
+          <div style={{ width: "clamp(120px,30%,220px)", aspectRatio: "4/3", borderRadius: 4, overflow: "hidden", background: "#222", flexShrink: 0 }}>
+            <img src={demoImage} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          </div>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(14px,2vw,20px)", color: C.paper, marginBottom: 6 }}>{name}</div>
+            <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: "clamp(18px,3vw,26px)", color: C.clay, marginBottom: 10 }}>\u00A3340,000+</div>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {["4 bed", "Detached", "Freehold"].map((t) => (
+                <span key={t} style={{ fontSize: 10, color: C.warmGrey, padding: "3px 8px", border: `1px solid ${C.bd}`, borderRadius: 3 }}>{t}</span>
+              ))}
+            </div>
+          </div>
+        </div>
+        {/* Piega icon */}
+        <div style={{ position: "absolute", top: 16, right: 16, width: 32, height: 32, borderRadius: 6, background: C.darkMid, display: "flex", alignItems: "center", justifyContent: "center", border: `1px solid ${C.bd}` }}>
+          <span style={{ fontFamily: "'Playfair Display',serif", fontSize: 12, fontStyle: "italic", color: C.accent }}>P</span>
+        </div>
+      </div>
+
+      {/* PHASE 1 — Extension popup */}
+      <div style={{ ...panelBase, ...hidden(1), justifyContent: "flex-start" }}>
+        <div style={{ height: 4, background: "#00B14040", width: 80, borderRadius: 2, marginBottom: 20 }} />
+        <div style={{ display: "flex", gap: 16, flex: 1, alignItems: "flex-start", opacity: 0.3 }}>
+          <div style={{ width: 160, aspectRatio: "4/3", borderRadius: 4, overflow: "hidden", background: "#222", flexShrink: 0 }}>
+            <img src={demoImage} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          </div>
+          <div>
+            <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 16, color: C.paper }}>{name}</div>
+          </div>
+        </div>
+        {/* Popup */}
+        <div style={{ position: "absolute", top: 16, right: 16, width: "clamp(180px,40%,240px)", background: C.dark, border: `1px solid ${C.bd}`, borderRadius: 8, padding: "14px 16px", boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}>
+          <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 13, color: C.paper, fontWeight: 600, marginBottom: 4 }}>{name}</div>
+          <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: C.warmGrey, marginBottom: 12 }}>\u00A3340,000+ \u00B7 4 bed \u00B7 Detached</div>
+          <div style={{ padding: "8px 12px", background: C.terracotta, borderRadius: 4, textAlign: "center", fontFamily: "'Bebas Neue',sans-serif", fontSize: 11, color: C.paper, letterSpacing: "0.08em", cursor: "pointer" }}>
+            ANALYSE THIS PROPERTY \u2192
+          </div>
+        </div>
+      </div>
+
+      {/* PHASE 2 — Pipeline */}
+      <div style={{ ...panelBase, ...hidden(2), justifyContent: "center", alignItems: "center" }}>
+        <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 13, color: C.warmGrey, letterSpacing: "0.1em", marginBottom: 20 }}>READING YOUR BUILDING</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, width: "100%", maxWidth: 280 }}>
+          {DEMO_AGENTS.map((agent, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, opacity: phase === 2 ? 1 : 0, transition: `opacity 0.3s ease ${0.3 + i * 0.25}s` }}>
+              <div style={{ width: 20, height: 20, borderRadius: "50%", background: `${C.sage}30`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: C.sage }}>\u2713</div>
+              <span style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: C.paper }}>{agent}</span>
+            </div>
+          ))}
+        </div>
+        <div style={{ marginTop: 16, fontFamily: "'Bebas Neue',sans-serif", fontSize: 11, color: C.sage, letterSpacing: "0.06em" }}>5/5 COMPLETE</div>
+      </div>
+
+      {/* PHASE 3 — Report */}
+      <div style={{ ...panelBase, ...hidden(3), justifyContent: "center", alignItems: "center" }}>
+        <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 11, color: C.warmGrey, letterSpacing: "0.1em", marginBottom: 8 }}>YOUR REPORT</div>
+        <div style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(16px,3vw,24px)", color: C.paper, marginBottom: 14 }}>{name}</div>
+        <div style={{ display: "flex", gap: 2, borderRadius: 4, overflow: "hidden", marginBottom: 14, width: "clamp(200px,60%,360px)", aspectRatio: "3/1" }}>
+          <div style={{ flex: 1, position: "relative", background: C.darkMid }}>
+            <img src={demoImage} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            <span style={{ position: "absolute", bottom: 4, left: 6, fontFamily: "'Bebas Neue',sans-serif", fontSize: 8, color: C.paper, opacity: 0.5 }}>NOW</span>
+          </div>
+          <div style={{ flex: 1, position: "relative", background: C.darkMid }}>
+            <img src={demoAfterImage} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            <span style={{ position: "absolute", bottom: 4, right: 6, fontFamily: "'Bebas Neue',sans-serif", fontSize: 8, color: C.paper, opacity: 0.5 }}>POSSIBLE</span>
+          </div>
+        </div>
+        <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: "clamp(28px,5vw,44px)", color: C.terracotta, letterSpacing: "0.02em" }}>{cost}</div>
+        <div style={{ fontFamily: "'EB Garamond',serif", fontSize: 12, fontStyle: "italic", color: C.warmGrey, marginTop: 4 }}>estimated renovation</div>
+      </div>
+
+      {/* Label bar */}
+      <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, padding: "20px 24px 16px", background: "linear-gradient(transparent, rgba(26,24,22,0.85))", pointerEvents: "none" }}>
+        <div style={{ fontFamily: "'EB Garamond',serif", fontSize: "clamp(12px,1.5vw,15px)", fontStyle: "italic", color: C.accent, textAlign: "center", whiteSpace: "pre-line", lineHeight: 1.5 }}>
+          {PHASE_LABELS[phase]}
+        </div>
+      </div>
+
+      {/* Phase dots */}
+      <div style={{ position: "absolute", bottom: 6, left: "50%", transform: "translateX(-50%)", display: "flex", gap: 5 }}>
+        {[0, 1, 2, 3].map((p) => (
+          <div key={p} style={{ width: 5, height: 5, borderRadius: "50%", background: phase === p ? C.accent : C.warmGrey, opacity: phase === p ? 0.8 : 0.2, transition: "all 0.3s ease" }} />
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -276,302 +620,259 @@ function PropertyCard({ card }) {
 export default function HomePage() {
   const [email, setEmail] = useState("");
   const [done, setDone] = useState(false);
-  const [error, setError] = useState(false);
+  const [formError, setFormError] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [pipelineCards, setPipelineCards] = useState(null); // null = loading, [] = loaded empty
+  const [reports, setReports] = useState([]);
 
   useEffect(() => {
     (async () => {
       try {
         const res = await fetch(`${AGENTS_URL}/reports`);
-        if (!res.ok) { setPipelineCards([]); return; }
-        const reports = await res.json();
-        const cards = reports.map(reportToCard);
-        setPipelineCards(cards);
-      } catch {
-        // Agents server offline — fall back to demo cards
-        setPipelineCards(null);
-      }
+        if (!res.ok) return;
+        setReports(await res.json());
+      } catch {}
     })();
   }, []);
 
-  // Pipeline reports are the one true source.
-  // Fallback demos only appear when the agents server is unreachable.
-  const allCards = (() => {
-    if (pipelineCards === null) {
-      // Server offline — show demos
-      return [...FALLBACK_CARDS].sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt));
-    }
-    if (pipelineCards.length === 0) {
-      // Server reachable, no reports yet — show demos as placeholder
-      return [...FALLBACK_CARDS].sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt));
-    }
-    // Real pipeline reports only
-    return [...pipelineCards].sort((a, b) => new Date(b.publishedAt) - new Date(a.publishedAt));
-  })();
+  /* Build mosaic blocks */
+  const dataBlocks = reports.flatMap(reportToBlocks);
+  const seen = new Set();
+  const uniqueBlocks = dataBlocks.filter((b) => {
+    const key = b.image ?? b.afterImage ?? b.videoUrl ?? b.number ?? b.text ?? "";
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 
-  // Mid-stream break after card 8 (if we have enough)
-  const breakAt = Math.min(8, allCards.length);
-  const topCards = allCards.slice(0, breakAt);
-  const bottomCards = allCards.slice(breakAt);
+  /* Interleave hardcoded text blocks every ~5 data blocks */
+  const allBlocks = [];
+  const texts = [...TEXT_BLOCKS];
+  let ti = 0;
+  for (let i = 0; i < uniqueBlocks.length; i++) {
+    allBlocks.push({ ...uniqueBlocks[i], _key: `d-${i}` });
+    if ((i + 1) % 5 === 0 && ti < texts.length) {
+      allBlocks.push(texts[ti++]);
+    }
+  }
+  while (ti < texts.length) allBlocks.push(texts[ti++]);
 
+  // If zero data blocks, still show text blocks
+  const hasMosaic = allBlocks.length > 0;
+
+  /* Demo animation data — use best pipeline report or fallback */
+  const demoReport = reports.find((r) => r.results?.renovation_visualisation?.exteriors?.length);
+  const demoImage = demoReport?.results?.renovation_visualisation?.exteriors?.[0]?.originalUrl ?? "/House_1/slot4.jpg";
+  const demoAfterImage = demoReport?.results?.renovation_visualisation?.exteriors?.[0]?.renovatedUrl ?? "/House_1/slot4.jpg";
+  const demoEnv = demoReport?.results?.cost_estimate?.totalEnvelope;
+  const demoCost = demoEnv ? `\u00A3${Math.round((demoEnv.low ?? 0) / 1000)}K \u2013 \u00A3${Math.round((demoEnv.high ?? 0) / 1000)}K` : null;
+  const demoName = demoReport?.listing?.address?.split(",")[0]?.trim() ?? null;
+
+  /* Email submit */
   async function submitEmail() {
     if (!email || !email.includes("@")) {
-      setError(true);
-      setTimeout(() => setError(false), 1400);
+      setFormError(true);
+      setTimeout(() => setFormError(false), 1400);
       return;
     }
     setSubmitting(true);
     try {
-      const res = await fetch(`${AGENTS_URL}/subscribe`, {
+      await fetch(`${AGENTS_URL}/subscribe`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
       });
-      setDone(true);
-    } catch {
-      setDone(true);
-    }
+    } catch {}
+    setDone(true);
     setSubmitting(false);
   }
 
   return (
-    <div style={{
-      minHeight: "100vh", display: "flex", flexDirection: "column",
-      position: "relative", zIndex: 1,
-    }}>
+    <>
+      <style>{STYLES}</style>
+      <div style={{ minHeight: "100vh" }}>
 
-      {/* ─── HEADER ────────────────────────────────────────────────── */}
-      <header style={{
-        padding: "28px 40px",
-        display: "flex", alignItems: "center", justifyContent: "space-between",
-        opacity: 0, animation: "arise .8s ease .2s forwards",
-      }}>
-        <div style={{
-          fontFamily: "'Playfair Display',serif", fontSize: 17,
-          fontStyle: "italic", color: C.accentDark, letterSpacing: "0.02em",
-        }}>
-          Piega
+        {/* ────────────────────────────────────────────────────────────
+            ZONE 1 — HERO (dark, compact — mosaic peeks above fold)
+            ──────────────────────────────────────────────────────────── */}
+        <div style={{ background: C.dark, padding: "clamp(28px,5vh,48px) 24px clamp(32px,5vh,56px)", textAlign: "center" }}>
+          <div style={{ maxWidth: 680, margin: "0 auto" }}>
+            {/* Wordmark */}
+            <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 16, fontStyle: "italic", color: C.accentDark, marginBottom: "clamp(24px,4vh,44px)" }}>Piega</div>
+
+            {/* Eyebrow */}
+            <div style={{ fontFamily: "'EB Garamond',serif", fontSize: 10, letterSpacing: "0.3em", textTransform: "uppercase", color: `${C.accent}50`, marginBottom: "clamp(16px,3vh,28px)" }}>
+              Property Intelligence \u00B7 United Kingdom
+            </div>
+
+            {/* Headline */}
+            <h1 style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(28px,5vw,52px)", fontWeight: 700, color: C.paper, lineHeight: 1.15, margin: "0 0 6px" }}>
+              The estate agent told you a story.
+            </h1>
+
+            {/* Divider claim */}
+            <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: "clamp(10px,1.2vw,13px)", letterSpacing: "0.25em", color: `${C.warmGrey}50`, margin: "10px 0" }}>
+              \u2014 WE ARE NOT THE ESTATE AGENT \u2014
+            </div>
+
+            {/* Italic line */}
+            <div style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(26px,4.5vw,48px)", fontStyle: "italic", color: C.terracotta, lineHeight: 1.2, margin: "0 0 20px" }}>
+              We tell you the building.
+            </div>
+
+            {/* Subtitle */}
+            <p style={{ fontFamily: "'EB Garamond',serif", fontSize: "clamp(14px,1.5vw,17px)", fontStyle: "italic", color: C.warmGrey, lineHeight: 1.7, margin: 0, maxWidth: 480, marginLeft: "auto", marginRight: "auto" }}>
+              An honest analysis of any UK property \u2014 what it is, where it sits, and what it will actually cost you to own.
+            </p>
+          </div>
         </div>
 
-      </header>
-
-      {/* ─── HERO ──────────────────────────────────────────────────── */}
-      <div style={{
-        maxWidth: 760, margin: "0 auto", padding: "60px 24px 50px",
-        textAlign: "center",
-      }}>
-        <div style={{
-          fontFamily: "'EB Garamond',serif", fontSize: 10,
-          letterSpacing: "0.3em", textTransform: "uppercase",
-          color: `${C.accent}60`, marginBottom: 44,
-          opacity: 0, animation: "arise .9s ease .5s forwards",
-        }}>
-          Property Intelligence · United Kingdom
-        </div>
-        <div style={{ opacity: 0, animation: "arise 1s ease .7s forwards" }}>
-          <h1 style={{
-            fontFamily: "'Playfair Display',serif",
-            fontSize: "clamp(32px,6vw,70px)", fontWeight: 700,
-            lineHeight: 1.06, letterSpacing: "-0.02em",
-            color: C.paper, margin: 0,
-          }}>
-            The estate agent<br />told you a story.
-          </h1>
-          <span style={{
-            display: "block", fontFamily: "'Bebas Neue',sans-serif",
-            fontSize: "clamp(11px,1.4vw,16px)", letterSpacing: "0.26em",
-            color: `${C.tertGrey}45`, margin: "16px 0 20px",
-            opacity: 0, animation: "arise .8s ease .9s forwards",
-          }}>
-            — WE ARE NOT THE ESTATE AGENT —
-          </span>
-          <h1 style={{
-            fontFamily: "'Playfair Display',serif",
-            fontSize: "clamp(32px,6vw,70px)", fontWeight: 400,
-            fontStyle: "italic", lineHeight: 1.06, letterSpacing: "-0.02em",
-            color: C.terracotta, margin: 0,
-          }}>
-            We tell you the building.
-          </h1>
-        </div>
-        <p style={{
-          maxWidth: 460, margin: "20px auto 0",
-          fontFamily: "'EB Garamond',serif", fontStyle: "italic",
-          fontSize: "clamp(15px,1.8vw,19px)", color: `${C.accent}80`,
-          lineHeight: 1.65,
-          opacity: 0, animation: "arise .9s ease 1.1s forwards",
-        }}>
-          An honest analysis of any UK property — what it is, where it sits, and what it will actually cost you to own. No flattery. No agenda. Just the fold.
-        </p>
-      </div>
-
-      {/* ─── THE STREAM ────────────────────────────────────────────── */}
-      <div style={{
-        maxWidth: 1080, margin: "0 auto", padding: "20px 24px 0",
-        width: "100%",
-        opacity: 0, animation: "arise .6s ease 1.2s forwards",
-      }}>
-        <div style={{ textAlign: "center", marginBottom: 28 }}>
-          <span style={{
-            fontFamily: "'Playfair Display',serif", fontStyle: "italic",
-            fontSize: 13, color: `${C.accent}50`,
-          }}>
-            Latest from the fold
-          </span>
-        </div>
-
-        {/* Top 8 cards */}
-        <div className="card-grid" style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(3, 1fr)",
-          gap: 14,
-        }}>
-          {topCards.map((card, i) => (
-            <CardReveal key={card.id} delay={i * 0.06}>
-              <PropertyCard card={card} />
-            </CardReveal>
-          ))}
-        </div>
-
-        {/* Mid-stream break + remaining cards — only when stream is long enough */}
-        {bottomCards.length > 0 && (
-          <>
-            <CardReveal>
-              <div style={{
-                textAlign: "center", padding: "48px 24px",
-                maxWidth: 480, margin: "0 auto",
-              }}>
-                <span style={{
-                  fontFamily: "'Playfair Display',serif", fontStyle: "italic",
-                  fontSize: "clamp(15px,2.2vw,19px)", color: `${C.accent}55`,
-                  lineHeight: 1.65,
-                }}>
-                  Every property has a piega — a fold. The moment it stops being someone else's problem and starts being your project.
-                </span>
-              </div>
-            </CardReveal>
-
-            <div className="card-grid" style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(3, 1fr)",
-              gap: 14,
-            }}>
-              {bottomCards.map((card, i) => (
-                <CardReveal key={card.id} delay={i * 0.06}>
-                  <PropertyCard card={card} />
-                </CardReveal>
+        {/* ────────────────────────────────────────────────────────────
+            ZONE 2 — MOSAIC
+            ──────────────────────────────────────────────────────────── */}
+        {hasMosaic && (
+          <div style={{ background: C.bg, padding: "clamp(24px,4vw,48px) 0" }}>
+            <div className="piega-mosaic">
+              {allBlocks.map((block, i) => (
+                <MosaicBlock key={block._key ?? `b-${i}`} block={block} index={i} />
               ))}
             </div>
-          </>
-        )}
-      </div>
-
-      {/* ─── EMAIL CAPTURE ────────────────────────────────────────── */}
-      <div style={{
-        maxWidth: 460, margin: "0 auto", padding: "56px 24px 90px",
-        textAlign: "center", width: "100%",
-      }}>
-        <div style={{
-          fontFamily: "'Playfair Display',serif",
-          fontSize: "clamp(18px,2.6vw,24px)", fontWeight: 700,
-          color: C.paper, marginBottom: 5, lineHeight: 1.2,
-        }}>
-          Get the next reading<br />
-          <em style={{ fontWeight: 400, fontStyle: "italic", color: C.terracotta }}>
-            before anyone else does.
-          </em>
-        </div>
-        <div style={{
-          fontFamily: "'EB Garamond',serif", fontStyle: "italic",
-          fontSize: 13.5, color: `${C.accent}66`, marginBottom: 22,
-          lineHeight: 1.5,
-        }}>
-          One property. Laid bare. No pitch, no weekly newsletter noise.
-        </div>
-        {!done ? (
-          <>
-            <div style={{ display: "flex", width: "100%" }}>
-              <input
-                type="email" value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && submitEmail()}
-                placeholder="your@email.com"
-                style={{
-                  flex: 1, background: "rgba(255,255,255,0.035)",
-                  border: `1px solid ${error ? C.terracotta : "rgba(184,169,154,0.32)"}`,
-                  borderRight: "none", padding: "15px 20px",
-                  fontFamily: "'EB Garamond',serif", fontSize: 17,
-                  color: C.paper, outline: "none", transition: "border-color .3s",
-                }}
-              />
-              <button
-                onClick={submitEmail}
-                disabled={submitting}
-                style={{
-                  fontFamily: "'Bebas Neue',sans-serif", fontSize: 14,
-                  letterSpacing: "0.18em", color: C.dark, background: C.accent,
-                  border: "none", padding: "0 26px", cursor: "pointer",
-                  flexShrink: 0, opacity: submitting ? 0.5 : 1,
-                }}
-              >
-                SEND IT
-              </button>
-            </div>
-            <div style={{
-              marginTop: 11, fontFamily: "'EB Garamond',serif",
-              fontSize: 11.5, fontStyle: "italic", color: `${C.tertGrey}4C`,
-            }}>
-              You'll know when the next building is ready.
-            </div>
-          </>
-        ) : (
-          <div style={{ padding: "18px 0", animation: "arise .6s ease both" }}>
-            <b style={{
-              fontFamily: "'Bebas Neue',sans-serif",
-              fontSize: "clamp(30px,4.5vw,48px)", letterSpacing: "0.06em",
-              color: C.paper, display: "block",
-            }}>
-              DONE.
-            </b>
-            <span style={{
-              fontFamily: "'EB Garamond',serif", fontStyle: "italic",
-              fontSize: 15, color: `${C.accent}80`, marginTop: 5,
-              display: "block",
-            }}>
-              You'll know when the next one is ready.
-            </span>
           </div>
         )}
+
+        {/* ────────────────────────────────────────────────────────────
+            ZONE 3 — DEMO ANIMATION
+            ──────────────────────────────────────────────────────────── */}
+        <div style={{ background: C.bg, padding: "clamp(24px,4vw,56px) 24px" }}>
+          <DemoAnimation
+            demoImage={demoImage}
+            demoAfterImage={demoAfterImage}
+            demoCost={demoCost}
+            demoName={demoName}
+          />
+          {/* CTA below demo */}
+          <div style={{ textAlign: "center", marginTop: "clamp(16px,3vw,32px)" }}>
+            <div style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(15px,2vw,19px)", fontStyle: "italic", color: C.charcoal, lineHeight: 1.6 }}>
+              Every property has a story the estate agent didn\u2019t tell you.
+            </div>
+            {hasMosaic && (
+              <div style={{ fontFamily: "'EB Garamond',serif", fontSize: 12, fontStyle: "italic", color: C.warmGrey, marginTop: 8, cursor: "pointer" }}
+                onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>
+                See what we found \u2191
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ────────────────────────────────────────────────────────────
+            ZONE 4 — CHROME EXTENSION CTA + EMAIL CAPTURE
+            ──────────────────────────────────────────────────────────── */}
+        <div style={{ background: C.dark, padding: "clamp(48px,8vh,80px) 24px", textAlign: "center" }}>
+          <div style={{ maxWidth: 540, margin: "0 auto" }}>
+
+            <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(22px,4vw,30px)", fontWeight: 700, color: C.paper, margin: "0 0 16px" }}>
+              See what your building is hiding.
+            </h2>
+            <p style={{ fontFamily: "'EB Garamond',serif", fontSize: "clamp(14px,1.5vw,17px)", fontStyle: "italic", color: C.warmGrey, lineHeight: 1.7, margin: "0 0 32px" }}>
+              Piega lives on Rightmove. Install the extension. Browse any listing. Click once. The full reading arrives before you\u2019ve finished your tea.
+            </p>
+
+            {/* Desktop — Chrome extension card */}
+            <div className="piega-desktop-only" style={{ background: C.darkMid, border: `1px solid ${C.bd}`, borderRadius: 8, padding: "20px 24px", marginBottom: 20, maxWidth: 400, marginLeft: "auto", marginRight: "auto" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 16 }}>
+                <div style={{ width: 40, height: 40, borderRadius: 8, background: C.darkCard, display: "flex", alignItems: "center", justifyContent: "center", border: `1px solid ${C.bd}`, flexShrink: 0 }}>
+                  <span style={{ fontFamily: "'Playfair Display',serif", fontSize: 16, fontStyle: "italic", color: C.accent }}>P</span>
+                </div>
+                <div style={{ textAlign: "left" }}>
+                  <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 14, fontWeight: 600, color: C.paper }}>Add Piega to Chrome</div>
+                  <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 11, color: C.warmGrey }}>Free \u00B7 No signup \u00B7 10 seconds</div>
+                </div>
+              </div>
+              <a href="#chrome-store" style={{ display: "block", padding: "10px 16px", background: C.terracotta, borderRadius: 4, textAlign: "center", fontFamily: "'Bebas Neue',sans-serif", fontSize: 14, color: C.paper, letterSpacing: "0.1em", textDecoration: "none", transition: "opacity 0.2s" }}>
+                ADD TO CHROME \u2192
+              </a>
+            </div>
+
+            {/* Desktop — 4 quiet steps */}
+            <div className="piega-desktop-only" style={{ fontFamily: "'EB Garamond',serif", fontSize: 12, color: C.warmGrey, opacity: 0.5, lineHeight: 2, marginBottom: 24 }}>
+              \u2460 Add to Chrome &nbsp;\u00B7&nbsp; \u2461 Browse Rightmove as normal &nbsp;\u00B7&nbsp; \u2462 Click \u201CAnalyse\u201D on any listing &nbsp;\u00B7&nbsp; \u2463 Full reading in 90 seconds
+            </div>
+
+            {/* Mobile — explain desktop-only */}
+            <div className="piega-mobile-only" style={{ marginBottom: 24 }}>
+              <p style={{ fontFamily: "'EB Garamond',serif", fontSize: 14, fontStyle: "italic", color: C.warmGrey, lineHeight: 1.7, margin: "0 0 6px" }}>
+                Piega is a Chrome extension that reads any Rightmove listing and shows you what the estate agent left out.
+              </p>
+              <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: C.warmGrey, opacity: 0.5, margin: "0 0 12px" }}>Currently desktop only.</p>
+              <p style={{ fontFamily: "'EB Garamond',serif", fontSize: 14, fontStyle: "italic", color: C.paper, margin: "0 0 16px" }}>
+                Send yourself the link and try it tonight.
+              </p>
+            </div>
+
+            {/* Divider */}
+            <div className="piega-desktop-only" style={{ fontFamily: "'EB Garamond',serif", fontSize: 12, color: C.warmGrey, opacity: 0.35, margin: "0 0 20px" }}>\u2014\u2014 or \u2014\u2014</div>
+
+            <p className="piega-desktop-only" style={{ fontFamily: "'EB Garamond',serif", fontSize: 13, fontStyle: "italic", color: C.warmGrey, margin: "0 0 14px" }}>
+              Not ready to install? Leave your email. We\u2019ll send you the next reading when it\u2019s ready.
+            </p>
+
+            {/* Email capture */}
+            {done ? (
+              <div style={{ padding: "20px 0" }}>
+                <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 36, color: C.terracotta, letterSpacing: "0.04em" }}>DONE.</div>
+                <p style={{ fontFamily: "'EB Garamond',serif", fontSize: 14, fontStyle: "italic", color: C.warmGrey, marginTop: 8 }}>We\u2019ll be in touch.</p>
+              </div>
+            ) : (
+              <div style={{ display: "flex", gap: 0, maxWidth: 380, margin: "0 auto" }}>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && submitEmail()}
+                  placeholder="your@email.com"
+                  style={{
+                    flex: 1, padding: "10px 14px", border: `1px solid ${formError ? C.terracotta : C.bd}`,
+                    borderRight: "none", borderRadius: "4px 0 0 4px",
+                    background: C.darkMid, color: C.paper,
+                    fontFamily: "'EB Garamond',serif", fontSize: 14,
+                    outline: "none", transition: "border-color 0.3s",
+                  }}
+                />
+                <button
+                  onClick={submitEmail}
+                  disabled={submitting}
+                  style={{
+                    padding: "10px 18px", border: "none", borderRadius: "0 4px 4px 0",
+                    background: C.terracotta, color: C.paper, cursor: "pointer",
+                    fontFamily: "'Bebas Neue',sans-serif", fontSize: 13, letterSpacing: "0.1em",
+                    opacity: submitting ? 0.5 : 1, transition: "opacity 0.2s",
+                  }}
+                >
+                  {submitting ? "\u2026" : "NOTIFY ME"}
+                </button>
+              </div>
+            )}
+
+            {/* Sub-note */}
+            <p style={{ fontFamily: "'EB Garamond',serif", fontSize: 11, fontStyle: "italic", color: C.warmGrey, opacity: 0.35, marginTop: 14 }}>
+              No payment. No signup. Just the building.
+            </p>
+          </div>
+        </div>
+
+        {/* ────────────────────────────────────────────────────────────
+            FOOTER
+            ──────────────────────────────────────────────────────────── */}
+        <footer style={{ background: C.bg, padding: "40px 24px 32px", textAlign: "center" }}>
+          <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 16, fontStyle: "italic", color: C.accentDark, marginBottom: 8 }}>Piega.</div>
+          <div style={{ fontFamily: "'EB Garamond',serif", fontSize: 11, fontStyle: "italic", color: C.warmGrey, opacity: 0.5, marginBottom: 4 }}>
+            Property intelligence \u00B7 United Kingdom
+          </div>
+          <div style={{ fontFamily: "'EB Garamond',serif", fontSize: 11, fontStyle: "italic", color: C.warmGrey, opacity: 0.35 }}>
+            Not affiliated with any estate agent. That is the point.
+          </div>
+        </footer>
+
       </div>
-
-      {/* ─── FOOTER ────────────────────────────────────────────────── */}
-      <footer style={{
-        padding: "22px 40px",
-        display: "flex", alignItems: "center", justifyContent: "center",
-        borderTop: `1px solid ${C.bd}`, marginTop: "auto",
-      }}>
-        <p style={{
-          fontFamily: "'EB Garamond',serif", fontSize: 11,
-          fontStyle: "italic", color: `${C.tertGrey}40`, margin: 0,
-        }}>
-          <strong style={{ fontStyle: "normal", fontWeight: 500, color: `${C.tertGrey}60` }}>
-            Piega
-          </strong>{" "}
-          is in private development. Not affiliated with any estate agent. That is the point.
-        </p>
-      </footer>
-
-      {/* ─── RESPONSIVE ────────────────────────────────────────────── */}
-      <style>{`
-        .card-grid { grid-template-columns: repeat(3, 1fr); }
-        @media (max-width: 1024px) {
-          .card-grid { grid-template-columns: repeat(2, 1fr) !important; }
-        }
-        @media (max-width: 640px) {
-          .card-grid { grid-template-columns: 1fr !important; }
-        }
-      `}</style>
-    </div>
+    </>
   );
 }

@@ -4,7 +4,7 @@ import { C } from "@/lib/theme";
 import { useInView } from "./hooks";
 
 /* ── Timing ── */
-const PHASE_DURATIONS = [3500, 2800, 3200, 5000];
+const PHASE_DURATIONS = [3500, 2800, 3200, 6000];
 const TOTAL = PHASE_DURATIONS.reduce((a, b) => a + b, 0);
 const PHASE_STARTS = PHASE_DURATIONS.reduce((acc, d, i) => {
   acc.push(i === 0 ? 0 : acc[i - 1] + PHASE_DURATIONS[i - 1]);
@@ -69,7 +69,7 @@ function BrowserChrome() {
 
 /* ══════════════════════════════════════════════════════════════════════ */
 
-export default function DemoAnimation({ demoImage, demoAfterImage, demoCost, demoName }) {
+export default function DemoAnimation({ demoImage, demoAfterImage, demoInteriorImage, demoInteriorAfterImage, demoCost, demoName }) {
   const [containerRef, inView] = useInView(0.2);
   const [phase, setPhase] = useState(0);
   const [procMsg, setProcMsg] = useState(0);
@@ -225,10 +225,11 @@ export default function DemoAnimation({ demoImage, demoAfterImage, demoCost, dem
           50% { opacity: 0.8; transform: scale(1.6); }
         }
         @keyframes demo-report-scroll {
-          0%, 5%    { transform: translateY(0); }
-          28%, 35%  { transform: translateY(-26%); }
-          60%, 68%  { transform: translateY(-44%); }
-          92%, 100% { transform: translateY(-56%); }
+          0%, 4%    { transform: translateY(0); }
+          20%, 26%  { transform: translateY(-18%); }
+          42%, 48%  { transform: translateY(-34%); }
+          66%, 72%  { transform: translateY(-50%); }
+          92%, 100% { transform: translateY(-62%); }
         }
       `}</style>
 
@@ -392,7 +393,7 @@ export default function DemoAnimation({ demoImage, demoAfterImage, demoCost, dem
 
             {/* Scrolling content — auto-scrolls through the report */}
             <div style={{
-              animation: phase === 3 ? "demo-report-scroll 4.2s ease-in-out 0.5s both" : "none",
+              animation: phase === 3 ? "demo-report-scroll 5.2s ease-in-out 0.5s both" : "none",
             }}>
 
               {/* ── 1. DARK HERO ── */}
@@ -442,6 +443,17 @@ export default function DemoAnimation({ demoImage, demoAfterImage, demoCost, dem
                   ))}
                 </div>
 
+                {/* Period features — semi-focused */}
+                <div style={{ opacity: 0.6, marginBottom: 6 }}>
+                  <div style={{ fontSize: 5, fontWeight: 600, letterSpacing: 1, textTransform: "uppercase", color: "#9B9590", marginBottom: 4 }}>Period Features</div>
+                  {[{ f: "Original sash windows", s: "visible", hidden: false }, { f: "Ceiling cornicing", s: "visible", hidden: false }, { f: "Timber floorboards", s: "likely beneath carpet", hidden: true }, { f: "Cast-iron radiators", s: "visible", hidden: false }, { f: "Fireplaces behind boarding", s: "hidden — inferred", hidden: true }].map((feat, i) => (
+                    <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "2px 0", borderBottom: i < 4 ? "1px solid rgba(30,28,26,0.05)" : "none" }}>
+                      <span style={{ fontFamily: "'EB Garamond',serif", fontSize: 7, color: feat.hidden ? "#6B6560" : "#1E1C1A", fontStyle: feat.hidden ? "italic" : "normal" }}>{feat.f}</span>
+                      <span style={{ fontFamily: "'Inter',sans-serif", fontSize: 5, color: "#9B9590", textTransform: "lowercase", flexShrink: 0, marginLeft: 8 }}>{feat.s}</span>
+                    </div>
+                  ))}
+                </div>
+
                 {/* 6. Construction grid — DIMMED */}
                 <div style={{ opacity: 0.3, display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 3, margin: "4px 0 10px" }}>
                   {["Walls", "Roof", "Found.", "Insul.", "Windows", "Heating"].map((label) => (
@@ -461,30 +473,75 @@ export default function DemoAnimation({ demoImage, demoAfterImage, demoCost, dem
                   <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 10, fontStyle: "italic", color: "#1E1C1A" }}>What It Could Become</div>
                 </div>
 
-                {/* 8. BEFORE / AFTER — FOCUS AREA */}
-                <div style={{ margin: "0 -6px", position: "relative", overflow: "hidden", borderRadius: 3, display: "flex", height: 80 }}>
-                  <div style={{ flex: 1, position: "relative", overflow: "hidden" }}>
-                    <img src={demoImage} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                    <span style={{ position: "absolute", bottom: 3, left: 5, fontFamily: "'Bebas Neue',sans-serif", fontSize: 6, color: "#fff", opacity: 0.65, textShadow: "0 1px 2px rgba(0,0,0,0.6)" }}>NOW</span>
-                  </div>
-                  <div style={{ position: "absolute", left: "50%", top: 0, bottom: 0, width: 1.5, background: "rgba(250,248,245,0.5)", transform: "translateX(-50%)", zIndex: 1 }}>
-                    <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: 14, height: 14, borderRadius: "50%", background: "rgba(30,28,26,0.6)", border: "1px solid rgba(250,248,245,0.5)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 6, color: "#FAF8F5" }}>{"\u2194"}</div>
-                  </div>
-                  <div style={{ flex: 1, position: "relative", overflow: "hidden" }}>
-                    <img src={demoAfterImage} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                    <span style={{ position: "absolute", bottom: 3, right: 5, fontFamily: "'Bebas Neue',sans-serif", fontSize: 6, color: "#fff", opacity: 0.65, textShadow: "0 1px 2px rgba(0,0,0,0.6)" }}>POSSIBLE</span>
+                {/* 8. BEFORE / AFTER EXTERIOR — FOCUS AREA */}
+                <div style={{ margin: "0 -6px 3px" }}>
+                  <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 5.5, letterSpacing: "0.08em", textTransform: "uppercase", color: C.clay, marginBottom: 2, paddingLeft: 6 }}>{"DRAG \u00B7 FRONT EXTERIOR"}</div>
+                  <div style={{ position: "relative", overflow: "hidden", borderRadius: 3, display: "flex", height: 80 }}>
+                    <div style={{ flex: 1, position: "relative", overflow: "hidden" }}>
+                      <img src={demoImage} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      <span style={{ position: "absolute", bottom: 3, left: 5, fontFamily: "'Bebas Neue',sans-serif", fontSize: 6, color: "#fff", opacity: 0.65, textShadow: "0 1px 2px rgba(0,0,0,0.6)" }}>NOW</span>
+                    </div>
+                    <div style={{ position: "absolute", left: "50%", top: 0, bottom: 0, width: 1.5, background: "rgba(250,248,245,0.5)", transform: "translateX(-50%)", zIndex: 1 }}>
+                      <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: 14, height: 14, borderRadius: "50%", background: "rgba(30,28,26,0.6)", border: "1px solid rgba(250,248,245,0.5)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 6, color: "#FAF8F5" }}>{"\u2194"}</div>
+                    </div>
+                    <div style={{ flex: 1, position: "relative", overflow: "hidden" }}>
+                      <img src={demoAfterImage} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      <span style={{ position: "absolute", bottom: 3, right: 5, fontFamily: "'Bebas Neue',sans-serif", fontSize: 6, color: "#fff", opacity: 0.65, textShadow: "0 1px 2px rgba(0,0,0,0.6)" }}>POSSIBLE</span>
+                    </div>
                   </div>
                 </div>
 
-                {/* 9. Palette + mood */}
-                <div style={{ margin: "8px 0" }}>
-                  <div style={{ display: "flex", gap: 3, marginBottom: 4 }}>
-                    {[C.accent, C.sage, C.terracotta, C.clay, C.accentDark].map((hex, i) => (
-                      <div key={i} style={{ flex: 1, height: 14, borderRadius: 2, background: hex, border: "1px solid rgba(30,28,26,0.06)" }} />
+                {/* 8b. BEFORE / AFTER INTERIOR — FOCUS AREA */}
+                {(demoInteriorImage || demoInteriorAfterImage) && (
+                  <div style={{ margin: "0 -6px 3px" }}>
+                    <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 5.5, letterSpacing: "0.08em", textTransform: "uppercase", color: C.clay, marginBottom: 2, paddingLeft: 6 }}>{"DRAG \u00B7 LIVING ROOM"}</div>
+                    <div style={{ position: "relative", overflow: "hidden", borderRadius: 3, display: "flex", height: 65 }}>
+                      <div style={{ flex: 1, position: "relative", overflow: "hidden" }}>
+                        <img src={demoInteriorImage || demoImage} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                        <span style={{ position: "absolute", bottom: 3, left: 5, fontFamily: "'Bebas Neue',sans-serif", fontSize: 6, color: "#fff", opacity: 0.65, textShadow: "0 1px 2px rgba(0,0,0,0.6)" }}>NOW</span>
+                      </div>
+                      <div style={{ position: "absolute", left: "50%", top: 0, bottom: 0, width: 1.5, background: "rgba(250,248,245,0.5)", transform: "translateX(-50%)", zIndex: 1 }}>
+                        <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: 12, height: 12, borderRadius: "50%", background: "rgba(30,28,26,0.6)", border: "1px solid rgba(250,248,245,0.5)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 5, color: "#FAF8F5" }}>{"\u2194"}</div>
+                      </div>
+                      <div style={{ flex: 1, position: "relative", overflow: "hidden" }}>
+                        <img src={demoInteriorAfterImage || demoAfterImage} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                        <span style={{ position: "absolute", bottom: 3, right: 5, fontFamily: "'Bebas Neue',sans-serif", fontSize: 6, color: "#fff", opacity: 0.65, textShadow: "0 1px 2px rgba(0,0,0,0.6)" }}>POSSIBLE</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 9. Palette */}
+                <div style={{ margin: "8px 0 4px" }}>
+                  <div style={{ fontSize: 5, fontWeight: 600, letterSpacing: 1, textTransform: "uppercase", color: "#9B9590", marginBottom: 3 }}>Palette</div>
+                  <div style={{ display: "flex", gap: 3, marginBottom: 3 }}>
+                    {[{ hex: C.accent, name: "Raw linen" }, { hex: C.sage, name: "Sage" }, { hex: C.terracotta, name: "Terracotta" }, { hex: C.clay, name: "Clay" }, { hex: C.accentDark, name: "Aged brass" }].map((col, i) => (
+                      <div key={i} style={{ flex: 1, textAlign: "center" }}>
+                        <div style={{ height: 14, borderRadius: 2, background: col.hex, border: "1px solid rgba(30,28,26,0.06)" }} />
+                        <div style={{ fontFamily: "'EB Garamond',serif", fontSize: 5, color: "#6B6560", marginTop: 2, lineHeight: 1.2 }}>{col.name}</div>
+                      </div>
                     ))}
                   </div>
-                  <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 7.5, fontStyle: "italic", color: "#B8A99A" }}>
+                </div>
+
+                {/* 9b. Materials list */}
+                <div style={{ margin: "4px 0" }}>
+                  <div style={{ fontSize: 5, fontWeight: 600, letterSpacing: 1, textTransform: "uppercase", color: "#9B9590", marginBottom: 3 }}>Materials</div>
+                  {["Lime plaster", "Engineered oak", "Reclaimed stone", "Aged brass hardware"].map((mat, i) => (
+                    <div key={i} style={{ display: "flex", alignItems: "center", padding: "2px 0", borderBottom: i < 3 ? "1px solid rgba(30,28,26,0.05)" : "none" }}>
+                      <div style={{ width: 4, height: 4, borderRadius: "50%", background: [C.terracotta, C.clay, C.sage, C.accentDark][i], marginRight: 6, opacity: 0.6, flexShrink: 0 }} />
+                      <span style={{ fontFamily: "'EB Garamond',serif", fontSize: 7, color: "#1E1C1A" }}>{mat}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Mood + avoid */}
+                <div style={{ margin: "4px 0 6px" }}>
+                  <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 7.5, fontStyle: "italic", color: "#B8A99A", marginBottom: 3 }}>
                     {"\u201Chonest, warm, rooted in place\u201D"}
+                  </div>
+                  <div style={{ opacity: 0.4, fontFamily: "'Inter',sans-serif", fontSize: 5.5, color: "#9B9590" }}>
+                    {"Avoid: grey composite, chrome fittings, vinyl plank"}
                   </div>
                 </div>
 
@@ -526,10 +583,15 @@ export default function DemoAnimation({ demoImage, demoAfterImage, demoCost, dem
                   <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 10, fontStyle: "italic", color: "#1E1C1A" }}>The Numbers</div>
                 </div>
 
-                {/* Cost rows — DIMMED */}
-                <div style={{ opacity: 0.35, marginBottom: 6 }}>
-                  {[{ cat: "Structural & Shell", range: "\u00A38k\u2013\u00A315k" }, { cat: "M&E Services", range: "\u00A35k\u2013\u00A312k" }, { cat: "Kitchen & Bath", range: "\u00A36k\u2013\u00A314k" }].map((row, i) => (
-                    <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "2.5px 0", borderBottom: "1px solid rgba(30,28,26,0.05)" }}>
+                {/* Narrative transition */}
+                <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 7.5, fontStyle: "italic", color: "#B8A99A", marginBottom: 4, lineHeight: 1.5 }}>
+                  {"Here\u2019s what all that means in money."}
+                </div>
+
+                {/* Cost rows — semi-focused with more items */}
+                <div style={{ opacity: 0.65, marginBottom: 6 }}>
+                  {[{ cat: "Structural & Shell", range: "\u00A38k\u2013\u00A315k" }, { cat: "M&E Services", range: "\u00A35k\u2013\u00A312k" }, { cat: "Kitchen & Bath", range: "\u00A36k\u2013\u00A314k" }, { cat: "Finishes & Decoration", range: "\u00A34k\u2013\u00A38k" }, { cat: "External Works", range: "\u00A33k\u2013\u00A37k" }, { cat: "Contingency (15%)", range: "\u00A34k\u2013\u00A38k" }].map((row, i) => (
+                    <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "2.5px 0", borderBottom: i < 5 ? "1px solid rgba(30,28,26,0.05)" : "none" }}>
                       <span style={{ fontFamily: "'EB Garamond',serif", fontSize: 7, color: "#1E1C1A" }}>{row.cat}</span>
                       <span style={{ fontFamily: "'Playfair Display',serif", fontSize: 7, fontWeight: 600, color: "#1E1C1A" }}>{row.range}</span>
                     </div>
@@ -544,11 +606,18 @@ export default function DemoAnimation({ demoImage, demoAfterImage, demoCost, dem
                   </div>
                 </div>
 
-                {/* 13. Stacked bar — FOCUS */}
-                <div style={{ display: "flex", height: 8, overflow: "hidden", borderRadius: 1, margin: "8px 0 4px" }}>
-                  {[{ flex: 3, color: C.terracotta }, { flex: 2.5, color: C.clay }, { flex: 2, color: C.accent }, { flex: 1.5, color: C.sage }, { flex: 1, color: "#8A8580" }].map((seg, i) => (
-                    <div key={i} style={{ flex: seg.flex, background: seg.color, height: "100%" }} />
-                  ))}
+                {/* 13. Stacked bar — FOCUS with labels */}
+                <div style={{ margin: "8px 0 2px" }}>
+                  <div style={{ display: "flex", height: 8, overflow: "hidden", borderRadius: 1 }}>
+                    {[{ flex: 3, color: C.terracotta }, { flex: 2.5, color: C.clay }, { flex: 2, color: C.accent }, { flex: 1.5, color: C.sage }, { flex: 1, color: "#8A8580" }].map((seg, i) => (
+                      <div key={i} style={{ flex: seg.flex, background: seg.color, height: "100%" }} />
+                    ))}
+                  </div>
+                  <div style={{ display: "flex", marginTop: 2 }}>
+                    {[{ label: "Structural", flex: 3 }, { label: "M&E", flex: 2.5 }, { label: "Finishes", flex: 2 }, { label: "External", flex: 1.5 }, { label: "Other", flex: 1 }].map((seg, i) => (
+                      <div key={i} style={{ flex: seg.flex, fontFamily: "'Bebas Neue',sans-serif", fontSize: 5, letterSpacing: "0.06em", color: "#6B6560", lineHeight: 1.2, paddingRight: 2, overflow: "hidden" }}>{seg.label}</div>
+                    ))}
+                  </div>
                 </div>
 
                 {/* Price gap — semi-focus */}
@@ -564,14 +633,38 @@ export default function DemoAnimation({ demoImage, demoAfterImage, demoCost, dem
                   </div>
                 </div>
 
-                {/* Phased budget — DIMMED */}
-                <div style={{ opacity: 0.3, display: "flex", gap: 3, margin: "5px 0 10px" }}>
-                  {[{ label: "Move-in", c: C.terracotta }, { label: "Year 1-2", c: C.clay }, { label: "Complete", c: C.sage }].map((p, i) => (
-                    <div key={i} style={{ flex: 1, padding: "3px 4px", borderRadius: 2, border: "1px solid rgba(30,28,26,0.08)", background: "#fff" }}>
-                      <div style={{ fontSize: 5, fontWeight: 600, color: p.c }}>{p.label}</div>
-                      <div style={{ height: 2.5, background: "#DFDAD4", borderRadius: 1, width: "55%", marginTop: 2 }} />
+                {/* Phased budget — semi-focused with descriptions */}
+                <div style={{ opacity: 0.6, margin: "5px 0" }}>
+                  <div style={{ fontSize: 5, fontWeight: 600, letterSpacing: 1, textTransform: "uppercase", color: "#9B9590", marginBottom: 3 }}>Phased Budget</div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                    {[{ label: "Move-in Basics", range: "\u00A38k\u2013\u00A312k", desc: "Rewire, boiler, damp treatment", c: C.terracotta }, { label: "Year 1\u20132", range: "\u00A312k\u2013\u00A328k", desc: "Kitchen, bathrooms, flooring", c: C.clay }, { label: "Complete Vision", range: "\u00A34k\u2013\u00A38k", desc: "Garden, external works, finishes", c: C.sage }].map((p, i) => (
+                      <div key={i} style={{ padding: "4px 6px", borderRadius: 2, border: "1px solid rgba(30,28,26,0.08)", background: "#fff" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                          <span style={{ fontSize: 6, fontWeight: 600, color: p.c }}>{p.label}</span>
+                          <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 7, color: "#1E1C1A" }}>{p.range}</span>
+                        </div>
+                        <div style={{ fontSize: 5, color: "#9B9590", marginTop: 1 }}>{p.desc}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Cost drivers */}
+                <div style={{ opacity: 0.5, margin: "5px 0" }}>
+                  <div style={{ fontSize: 5, fontWeight: 600, letterSpacing: 1, textTransform: "uppercase", color: "#9B9590", marginBottom: 3 }}>Key Cost Drivers</div>
+                  {[{ factor: "Roof condition", impact: "Unknown age \u2014 could add \u00A35\u201312k" }, { factor: "Electrics rewire", impact: "Likely needed \u2014 \u00A34\u20138k" }].map((d, i) => (
+                    <div key={i} style={{ padding: "3px 5px", borderRadius: 2, border: "1px solid rgba(30,28,26,0.08)", background: "#fff", marginBottom: 2 }}>
+                      <div style={{ fontSize: 6, fontWeight: 600, color: "#1E1C1A" }}>{d.factor}</div>
+                      <div style={{ fontSize: 5, color: "#6B6560" }}>{d.impact}</div>
                     </div>
                   ))}
+                </div>
+
+                {/* Confidence — dimmed */}
+                <div style={{ opacity: 0.3, padding: "3px 5px", borderRadius: 2, background: "rgba(30,28,26,0.03)", marginBottom: 6 }}>
+                  <div style={{ fontFamily: "'EB Garamond',serif", fontSize: 5.5, fontStyle: "italic", color: "#6B6560", lineHeight: 1.4 }}>
+                    Desktop appraisal based on listing photos and public data. Not a survey. Not a tender.
+                  </div>
                 </div>
 
                 {/* divider */}

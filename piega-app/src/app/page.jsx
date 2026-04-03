@@ -53,6 +53,8 @@ export default function HomePage() {
   const demoReport = reports.find((r) => r.results?.renovation_visualisation?.exteriors?.length);
   const demoImage = demoReport?.results?.renovation_visualisation?.exteriors?.[0]?.originalUrl ?? "/House_1/slot4.jpg";
   const demoAfterImage = demoReport?.results?.renovation_visualisation?.exteriors?.[0]?.renovatedUrl ?? "/House_1/slot4.jpg";
+  const demoInteriorImage = demoReport?.results?.renovation_visualisation?.interiors?.[0]?.originalUrl ?? null;
+  const demoInteriorAfterImage = demoReport?.results?.renovation_visualisation?.interiors?.[0]?.renovatedUrl ?? null;
   const demoEnv = demoReport?.results?.cost_estimate?.totalEnvelope;
   const demoCost = demoEnv ? `\u00A3${Math.round((demoEnv.low ?? 0) / 1000)}K \u2013 \u00A3${Math.round((demoEnv.high ?? 0) / 1000)}K` : null;
   const demoName = demoReport?.listing?.address?.split(",")[0]?.trim() ?? null;
@@ -131,6 +133,8 @@ export default function HomePage() {
           <DemoAnimation
             demoImage={demoImage}
             demoAfterImage={demoAfterImage}
+            demoInteriorImage={demoInteriorImage}
+            demoInteriorAfterImage={demoInteriorAfterImage}
             demoCost={demoCost}
             demoName={demoName}
           />

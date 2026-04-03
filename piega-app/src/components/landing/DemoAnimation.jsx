@@ -4,7 +4,7 @@ import { C } from "@/lib/theme";
 import { useInView } from "./hooks";
 
 /* ── Timing ── */
-const PHASE_DURATIONS = [3500, 2800, 3200, 4000];
+const PHASE_DURATIONS = [3500, 2800, 3200, 5000];
 const TOTAL = PHASE_DURATIONS.reduce((a, b) => a + b, 0);
 const PHASE_STARTS = PHASE_DURATIONS.reduce((acc, d, i) => {
   acc.push(i === 0 ? 0 : acc[i - 1] + PHASE_DURATIONS[i - 1]);
@@ -224,6 +224,12 @@ export default function DemoAnimation({ demoImage, demoAfterImage, demoCost, dem
           0%, 100% { opacity: 0.3; transform: scale(1); }
           50% { opacity: 0.8; transform: scale(1.6); }
         }
+        @keyframes demo-report-scroll {
+          0%, 5%    { transform: translateY(0); }
+          28%, 35%  { transform: translateY(-26%); }
+          60%, 68%  { transform: translateY(-44%); }
+          92%, 100% { transform: translateY(-56%); }
+        }
       `}</style>
 
       <div
@@ -368,52 +374,224 @@ export default function DemoAnimation({ demoImage, demoAfterImage, demoCost, dem
           </div>
         </div>
 
-        {/* ═══════ PHASE 3 — Mini report preview ═══════ */}
-        <div style={{ ...panelBase, ...hidden(3), justifyContent: "center", alignItems: "center", background: C.dark }}>
+        {/* ═══════ PHASE 3 — Scrolling report preview ═══════ */}
+        <div style={{ ...panelBase, ...hidden(3), background: C.dark, overflow: "hidden" }}>
+          {/* Report "window" — centred card with overflow clipping */}
           <div style={{
-            width: "clamp(240px,55%,340px)",
-            background: "#FAF8F5", borderRadius: 6, overflow: "hidden",
-            boxShadow: "0 8px 40px rgba(0,0,0,0.4)",
+            position: "absolute", left: "50%", top: "50%",
+            transform: "translate(-50%, -50%)",
+            width: "clamp(280px, 65%, 390px)",
+            height: "clamp(280px, 80%, 360px)",
+            overflow: "hidden", borderRadius: 6,
+            boxShadow: "0 12px 48px rgba(0,0,0,0.5), 0 0 0 1px rgba(184,169,154,0.08)",
           }}>
-            {/* Dark hero strip */}
-            <div style={{ background: C.dark, padding: "10px 14px" }}>
-              <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 9, fontStyle: "italic", color: C.accent, marginBottom: 4 }}>Piega.</div>
-              <div style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(12px,1.8vw,15px)", color: C.paper, fontWeight: 700, lineHeight: 1.2 }}>{name}</div>
-              <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 8, color: C.warmGrey, letterSpacing: "0.1em", marginTop: 2 }}>INTERWAR SEMI {"\u00B7"} 1930{"\u2013"}1945</div>
-            </div>
+            {/* Top fade mask */}
+            <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 20, background: `linear-gradient(${C.dark}90, transparent)`, zIndex: 2, pointerEvents: "none" }} />
+            {/* Bottom fade mask */}
+            <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 28, background: `linear-gradient(transparent, ${C.dark})`, zIndex: 2, pointerEvents: "none" }} />
 
-            {/* Before / After pair */}
-            <div style={{ display: "flex", gap: 2, padding: "8px 10px 0" }}>
-              <div style={{ flex: 1, position: "relative", aspectRatio: "4/3", borderRadius: 3, overflow: "hidden", background: C.darkMid }}>
-                <img src={demoImage} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                <span style={{ position: "absolute", bottom: 2, left: 4, fontFamily: "'Bebas Neue',sans-serif", fontSize: 7, color: "#fff", opacity: 0.6, textShadow: "0 1px 2px rgba(0,0,0,0.5)" }}>NOW</span>
+            {/* Scrolling content — auto-scrolls through the report */}
+            <div style={{
+              animation: phase === 3 ? "demo-report-scroll 4.2s ease-in-out 0.5s both" : "none",
+            }}>
+
+              {/* ── 1. DARK HERO ── */}
+              <div style={{ background: C.dark, padding: "12px 16px 14px", position: "relative", overflow: "hidden" }}>
+                <div style={{ position: "absolute", right: -8, top: "50%", transform: "translateY(-50%)", fontFamily: "'Bebas Neue',sans-serif", fontSize: 48, color: "rgba(255,255,255,0.02)", letterSpacing: "0.05em", pointerEvents: "none", whiteSpace: "nowrap" }}>INTERWAR SEMI</div>
+                <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 9, fontStyle: "italic", color: C.accent, marginBottom: 3 }}>Piega</div>
+                <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 7, letterSpacing: "0.2em", color: C.terracotta, marginBottom: 6 }}>{"RIGHTMOVE \u00B7 LUTON \u00B7 LU2"}</div>
+                <div style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(14px,2.2vw,18px)", color: C.paper, fontWeight: 400, lineHeight: 1.15, marginBottom: 4 }}>{name}</div>
+                <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 7.5, color: "rgba(184,169,154,0.5)", marginBottom: 8 }}>{"4 bed \u00B7 Detached \u00B7 Freehold"}</div>
+                <div style={{ display: "flex", gap: 14 }}>
+                  {[{ v: "\u00A3340K+", s: "guide", c: C.clay }, { v: "4 BED", s: "2 bath" }, { v: "DETACHED", s: "Freehold" }, { v: "1930\u20131945", s: "Interwar Semi" }].map((stat, i) => (
+                    <div key={i}>
+                      <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 10, letterSpacing: "0.04em", color: stat.c ?? C.paper }}>{stat.v}</div>
+                      <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 5.5, color: "rgba(184,169,154,0.4)" }}>{stat.s}</div>
+                    </div>
+                  ))}
+                </div>
               </div>
-              <div style={{ flex: 1, position: "relative", aspectRatio: "4/3", borderRadius: 3, overflow: "hidden", background: C.darkMid }}>
-                <img src={demoAfterImage} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                <span style={{ position: "absolute", bottom: 2, right: 4, fontFamily: "'Bebas Neue',sans-serif", fontSize: 7, color: "#fff", opacity: 0.6, textShadow: "0 1px 2px rgba(0,0,0,0.5)" }}>POSSIBLE</span>
+
+              {/* ── 2. HERO IMAGE ── */}
+              <div style={{ lineHeight: 0, position: "relative" }}>
+                <img src={demoAfterImage || demoImage} alt="" style={{ width: "100%", height: 75, objectFit: "cover", display: "block" }} />
+                <div style={{ position: "absolute", top: 5, left: 8, fontFamily: "'Bebas Neue',sans-serif", fontSize: 6, letterSpacing: "0.2em", color: "rgba(250,248,245,0.35)", textShadow: "0 1px 3px rgba(0,0,0,0.5)" }}>THE APPROACH</div>
               </div>
-            </div>
 
-            {/* Palette swatches */}
-            <div style={{ display: "flex", gap: 2, padding: "6px 10px 0" }}>
-              {[C.accent, C.sage, C.terracotta, C.clay, C.accentDark].map((hex, i) => (
-                <div key={i} style={{ flex: 1, height: 4, borderRadius: 2, background: hex }} />
-              ))}
-            </div>
+              {/* ── BODY — paper background ── */}
+              <div style={{ background: "#FAF8F5", padding: "0 14px" }}>
 
-            {/* Cost */}
-            <div style={{ padding: "8px 10px 2px", textAlign: "center" }}>
-              <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: "clamp(18px,3vw,28px)", color: C.terracotta, letterSpacing: "0.02em" }}>{cost}</div>
-              <div style={{ fontFamily: "'EB Garamond',serif", fontSize: 9, fontStyle: "italic", color: "#8A8580" }}>estimated renovation</div>
-            </div>
+                {/* 3. Opening hook */}
+                <div style={{ padding: "10px 0 4px" }}>
+                  <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 10, fontStyle: "italic", lineHeight: 1.55, color: "#1E1C1A" }}>
+                    {"\u201CThe bones are good. The walls tell a straightforward story \u2014 but the numbers tell another.\u201D"}
+                  </div>
+                </div>
 
-            {/* Narrative excerpt */}
-            <div style={{ padding: "4px 12px 10px" }}>
-              <div style={{ fontFamily: "'EB Garamond',serif", fontSize: 9, fontStyle: "italic", color: "#6A655F", lineHeight: 1.5 }}>
-                {"\u201CThe bones are good. The walls tell a straightforward story\u2026\u201D"}
-              </div>
-            </div>
-          </div>
+                {/* 4. Archetype slab */}
+                <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 9, letterSpacing: "0.04em", color: C.terracotta, margin: "6px 0 8px", textTransform: "uppercase" }}>
+                  Interwar Semi. 1930{"\u2013"}1945. Cavity brick, concrete tile roof.
+                </div>
+
+                {/* 5. Chapter 1 — DIMMED */}
+                <div style={{ opacity: 0.35, margin: "8px 0" }}>
+                  <div style={{ fontSize: 5.5, fontWeight: 600, letterSpacing: 1.5, textTransform: "uppercase", color: "#9B9590", marginBottom: 2 }}>Chapter 1</div>
+                  <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 10, fontStyle: "italic", color: "#1E1C1A", marginBottom: 6 }}>{"What You\u2019re Looking At"}</div>
+                  {[92, 100, 78, 88, 60].map((w, i) => (
+                    <div key={i} style={{ height: 3.5, background: "#DFDAD4", borderRadius: 2, width: `${w}%`, marginBottom: 3 }} />
+                  ))}
+                </div>
+
+                {/* 6. Construction grid — DIMMED */}
+                <div style={{ opacity: 0.3, display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 3, margin: "4px 0 10px" }}>
+                  {["Walls", "Roof", "Found.", "Insul.", "Windows", "Heating"].map((label) => (
+                    <div key={label} style={{ padding: "3px 4px", borderRadius: 2, border: "1px solid rgba(30,28,26,0.08)", background: "#fff" }}>
+                      <div style={{ fontSize: 5, fontWeight: 600, letterSpacing: 0.5, textTransform: "uppercase", color: "#9B9590" }}>{label}</div>
+                      <div style={{ height: 2.5, background: "#DFDAD4", borderRadius: 1, width: "65%", marginTop: 2 }} />
+                    </div>
+                  ))}
+                </div>
+
+                {/* divider */}
+                <div style={{ width: 24, height: 1, background: "rgba(30,28,26,0.08)", margin: "0 auto 10px" }} />
+
+                {/* 7. Chapter 2 heading */}
+                <div style={{ marginBottom: 6 }}>
+                  <div style={{ fontSize: 5.5, fontWeight: 600, letterSpacing: 1.5, textTransform: "uppercase", color: "#9B9590", marginBottom: 2 }}>Chapter 2</div>
+                  <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 10, fontStyle: "italic", color: "#1E1C1A" }}>What It Could Become</div>
+                </div>
+
+                {/* 8. BEFORE / AFTER — FOCUS AREA */}
+                <div style={{ margin: "0 -6px", position: "relative", overflow: "hidden", borderRadius: 3, display: "flex", height: 80 }}>
+                  <div style={{ flex: 1, position: "relative", overflow: "hidden" }}>
+                    <img src={demoImage} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    <span style={{ position: "absolute", bottom: 3, left: 5, fontFamily: "'Bebas Neue',sans-serif", fontSize: 6, color: "#fff", opacity: 0.65, textShadow: "0 1px 2px rgba(0,0,0,0.6)" }}>NOW</span>
+                  </div>
+                  <div style={{ position: "absolute", left: "50%", top: 0, bottom: 0, width: 1.5, background: "rgba(250,248,245,0.5)", transform: "translateX(-50%)", zIndex: 1 }}>
+                    <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: 14, height: 14, borderRadius: "50%", background: "rgba(30,28,26,0.6)", border: "1px solid rgba(250,248,245,0.5)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 6, color: "#FAF8F5" }}>{"\u2194"}</div>
+                  </div>
+                  <div style={{ flex: 1, position: "relative", overflow: "hidden" }}>
+                    <img src={demoAfterImage} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    <span style={{ position: "absolute", bottom: 3, right: 5, fontFamily: "'Bebas Neue',sans-serif", fontSize: 6, color: "#fff", opacity: 0.65, textShadow: "0 1px 2px rgba(0,0,0,0.6)" }}>POSSIBLE</span>
+                  </div>
+                </div>
+
+                {/* 9. Palette + mood */}
+                <div style={{ margin: "8px 0" }}>
+                  <div style={{ display: "flex", gap: 3, marginBottom: 4 }}>
+                    {[C.accent, C.sage, C.terracotta, C.clay, C.accentDark].map((hex, i) => (
+                      <div key={i} style={{ flex: 1, height: 14, borderRadius: 2, background: hex, border: "1px solid rgba(30,28,26,0.06)" }} />
+                    ))}
+                  </div>
+                  <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 7.5, fontStyle: "italic", color: "#B8A99A" }}>
+                    {"\u201Chonest, warm, rooted in place\u201D"}
+                  </div>
+                </div>
+
+                {/* divider */}
+                <div style={{ width: 24, height: 1, background: "rgba(30,28,26,0.08)", margin: "8px auto" }} />
+
+                {/* 10. Chapter 3 — issues (semi-focused) */}
+                <div style={{ margin: "0 0 8px" }}>
+                  <div style={{ opacity: 0.5 }}>
+                    <div style={{ fontSize: 5.5, fontWeight: 600, letterSpacing: 1.5, textTransform: "uppercase", color: "#9B9590", marginBottom: 2 }}>Chapter 3</div>
+                    <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 10, fontStyle: "italic", color: "#1E1C1A", marginBottom: 4 }}>What to Investigate</div>
+                  </div>
+                  <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 8, color: "#1E1C1A", letterSpacing: "0.03em", marginBottom: 5 }}>
+                    WHERE THE REAL DECISIONS ARE.
+                  </div>
+                  {[{ label: "Damp staining on chimney breast", sev: "moderate", c: C.clay }, { label: "Dated window seals throughout", sev: "minor", c: "#9B9590" }].map((issue, i) => (
+                    <div key={i} style={{ padding: "4px 6px", borderRadius: 2, border: "1px solid rgba(30,28,26,0.08)", background: "#fff", marginBottom: 3, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <span style={{ fontFamily: "'EB Garamond',serif", fontSize: 7.5, color: "#1E1C1A" }}>{issue.label}</span>
+                      <span style={{ fontSize: 5, fontWeight: 600, letterSpacing: 0.5, textTransform: "uppercase", color: issue.c, fontFamily: "'Inter',sans-serif" }}>{issue.sev}</span>
+                    </div>
+                  ))}
+                  <div style={{ opacity: 0.4, padding: "4px 6px", borderRadius: 2, background: "rgba(30,28,26,0.03)", marginTop: 3 }}>
+                    <div style={{ fontSize: 5, fontWeight: 600, letterSpacing: 1, textTransform: "uppercase", color: "#9B9590", marginBottom: 2 }}>Cannot be assessed from photos</div>
+                    {["Electrics age", "Drainage", "Asbestos risk"].map((u, i) => (
+                      <div key={i} style={{ display: "flex", alignItems: "center", gap: 3, marginBottom: 1 }}>
+                        <div style={{ width: 2, height: 2, borderRadius: "50%", background: "#9B9590" }} />
+                        <span style={{ fontSize: 5.5, color: "#6B6560", fontFamily: "'EB Garamond',serif" }}>{u}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* divider */}
+                <div style={{ width: 24, height: 1, background: "rgba(30,28,26,0.08)", margin: "8px auto" }} />
+
+                {/* 11. Chapter 4 heading */}
+                <div style={{ marginBottom: 4 }}>
+                  <div style={{ fontSize: 5.5, fontWeight: 600, letterSpacing: 1.5, textTransform: "uppercase", color: "#9B9590", marginBottom: 2 }}>Chapter 4</div>
+                  <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 10, fontStyle: "italic", color: "#1E1C1A" }}>The Numbers</div>
+                </div>
+
+                {/* Cost rows — DIMMED */}
+                <div style={{ opacity: 0.35, marginBottom: 6 }}>
+                  {[{ cat: "Structural & Shell", range: "\u00A38k\u2013\u00A315k" }, { cat: "M&E Services", range: "\u00A35k\u2013\u00A312k" }, { cat: "Kitchen & Bath", range: "\u00A36k\u2013\u00A314k" }].map((row, i) => (
+                    <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "2.5px 0", borderBottom: "1px solid rgba(30,28,26,0.05)" }}>
+                      <span style={{ fontFamily: "'EB Garamond',serif", fontSize: 7, color: "#1E1C1A" }}>{row.cat}</span>
+                      <span style={{ fontFamily: "'Playfair Display',serif", fontSize: 7, fontWeight: 600, color: "#1E1C1A" }}>{row.range}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* 12. BIG NUMBER — FOCUS */}
+                <div style={{ textAlign: "center", padding: "10px 0", borderTop: "1px solid rgba(30,28,26,0.06)", borderBottom: "1px solid rgba(30,28,26,0.06)", margin: "2px 0" }}>
+                  <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: "clamp(28px,5vw,40px)", letterSpacing: "0.02em", color: "#1E1C1A", lineHeight: 1 }}>{cost}</div>
+                  <div style={{ fontFamily: "'EB Garamond',serif", fontSize: 6.5, letterSpacing: "0.12em", textTransform: "uppercase", color: "#9B9590", marginTop: 3 }}>
+                    ten-year cost of ownership beyond purchase
+                  </div>
+                </div>
+
+                {/* 13. Stacked bar — FOCUS */}
+                <div style={{ display: "flex", height: 8, overflow: "hidden", borderRadius: 1, margin: "8px 0 4px" }}>
+                  {[{ flex: 3, color: C.terracotta }, { flex: 2.5, color: C.clay }, { flex: 2, color: C.accent }, { flex: 1.5, color: C.sage }, { flex: 1, color: "#8A8580" }].map((seg, i) => (
+                    <div key={i} style={{ flex: seg.flex, background: seg.color, height: "100%" }} />
+                  ))}
+                </div>
+
+                {/* Price gap — semi-focus */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "5px 0", opacity: 0.7 }}>
+                  <div style={{ textAlign: "center" }}>
+                    <div style={{ fontSize: 5, letterSpacing: 1, textTransform: "uppercase", color: "#9B9590" }}>Asking</div>
+                    <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 11, color: "#1E1C1A" }}>{"\u00A3340K"}</div>
+                  </div>
+                  <div style={{ fontSize: 10, color: "#9B9590" }}>{"\u2192"}</div>
+                  <div style={{ textAlign: "center" }}>
+                    <div style={{ fontSize: 5, letterSpacing: 1, textTransform: "uppercase", color: "#9B9590" }}>Post-Works</div>
+                    <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 11, color: C.sage }}>{"\u00A3420K\u2013\u00A3480K"}</div>
+                  </div>
+                </div>
+
+                {/* Phased budget — DIMMED */}
+                <div style={{ opacity: 0.3, display: "flex", gap: 3, margin: "5px 0 10px" }}>
+                  {[{ label: "Move-in", c: C.terracotta }, { label: "Year 1-2", c: C.clay }, { label: "Complete", c: C.sage }].map((p, i) => (
+                    <div key={i} style={{ flex: 1, padding: "3px 4px", borderRadius: 2, border: "1px solid rgba(30,28,26,0.08)", background: "#fff" }}>
+                      <div style={{ fontSize: 5, fontWeight: 600, color: p.c }}>{p.label}</div>
+                      <div style={{ height: 2.5, background: "#DFDAD4", borderRadius: 1, width: "55%", marginTop: 2 }} />
+                    </div>
+                  ))}
+                </div>
+
+                {/* divider */}
+                <div style={{ width: 24, height: 1, background: "rgba(30,28,26,0.08)", margin: "0 auto 8px" }} />
+
+                {/* 15. CLOSING GATE — FOCUS */}
+                <div style={{ textAlign: "center", padding: "6px 0 14px" }}>
+                  <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 8, fontStyle: "italic", color: "#B8A99A", marginBottom: 6, lineHeight: 1.5, maxWidth: 180, margin: "0 auto 6px" }}>
+                    {"\u201CThis one has warmth. But warmth alone doesn\u2019t fix the roof.\u201D"}
+                  </div>
+                  <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 8, color: "#1E1C1A", letterSpacing: "0.04em", marginBottom: 2 }}>YOU READ THIS FAR.</div>
+                  <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 6.5, fontStyle: "italic", color: "#6B6560" }}>This is one building. Yours is different.</div>
+                  <div style={{ marginTop: 6 }}>
+                    <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 7, letterSpacing: 3, color: "#9B9590" }}>PIEGA<span style={{ color: C.terracotta }}>.</span></div>
+                  </div>
+                </div>
+
+              </div>{/* end paper body */}
+            </div>{/* end scrolling content */}
+          </div>{/* end report window */}
         </div>
 
         {/* ═══════ Bottom: label + progress bar ═══════ */}

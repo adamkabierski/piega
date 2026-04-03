@@ -276,7 +276,7 @@ function LargeSlider({ block }) {
         <div style={{ position: "absolute", bottom: 10, left: 12, fontFamily: "'Bebas Neue',sans-serif", fontSize: 11, color: C.paper, opacity: 0.6, letterSpacing: "0.06em", textShadow: "0 1px 4px rgba(0,0,0,0.6)" }}>NOW</div>
         <div style={{ position: "absolute", bottom: 10, right: 12, fontFamily: "'Bebas Neue',sans-serif", fontSize: 11, color: C.paper, opacity: 0.6, letterSpacing: "0.06em", textShadow: "0 1px 4px rgba(0,0,0,0.6)" }}>POSSIBLE</div>
         <div style={{ position: "absolute", top: 0, bottom: 0, left: `${split}%`, width: 2, background: C.paper, opacity: 0.5, transform: "translateX(-1px)" }}>
-          <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: 28, height: 28, borderRadius: "50%", background: "rgba(26,24,22,0.6)", border: "1.5px solid rgba(250,248,245,0.5)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Inter',sans-serif", fontSize: 9, color: C.paper, opacity: 0.8 }}>\u2194</div>
+          <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: 28, height: 28, borderRadius: "50%", background: "rgba(26,24,22,0.6)", border: "1.5px solid rgba(250,248,245,0.5)", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Inter',sans-serif", fontSize: 9, color: C.paper, opacity: 0.8 }}>{"\u2194"}</div>
         </div>
       </div>
       <div style={{ padding: "8px 2px 0", display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8 }}>
@@ -311,7 +311,7 @@ function MediumComposite({ block }) {
         <div style={{ position: "absolute", top: 0, bottom: 0, left: "50%", width: 1, background: C.paper, opacity: hovered ? 0 : 0.3, transition: "opacity 0.5s ease" }} />
       </div>
       <div style={{ padding: "5px 2px 0" }}>
-        <span style={{ fontFamily: "'Inter',sans-serif", fontSize: 11, color: C.tertGrey }}>{block.propertyName} \u00B7 {block.room}</span>
+        <span style={{ fontFamily: "'Inter',sans-serif", fontSize: 11, color: C.tertGrey }}>{block.propertyName} {"·"} {block.room}</span>
       </div>
     </div>
   );
@@ -436,7 +436,7 @@ function VideoBlock({ block }) {
     <div ref={ref} style={{ width: "100%", aspectRatio: "16/9", borderRadius: 6, overflow: "hidden", position: "relative", background: C.dark }}>
       <video ref={videoRef} src={block.videoUrl} muted loop playsInline
         style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-      <div style={{ position: "absolute", bottom: 8, right: 10, fontFamily: "'Bebas Neue',sans-serif", fontSize: 11, color: C.paper, opacity: 0.5, letterSpacing: "0.08em" }}>FACADE \u00B7 4 SEC</div>
+      <div style={{ position: "absolute", bottom: 8, right: 10, fontFamily: "'Bebas Neue',sans-serif", fontSize: 11, color: C.paper, opacity: 0.5, letterSpacing: "0.08em" }}>{"FACADE · 4 SEC"}</div>
     </div>
   );
 }
@@ -535,7 +535,7 @@ function DemoAnimation({ demoImage, demoAfterImage, demoCost, demoName }) {
           </div>
           <div style={{ minWidth: 0 }}>
             <div style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(14px,2vw,20px)", color: C.paper, marginBottom: 6 }}>{name}</div>
-            <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: "clamp(18px,3vw,26px)", color: C.clay, marginBottom: 10 }}>\u00A3340,000+</div>
+            <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: "clamp(18px,3vw,26px)", color: C.clay, marginBottom: 10 }}>{"£340,000+"}</div>
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
               {["4 bed", "Detached", "Freehold"].map((t) => (
                 <span key={t} style={{ fontSize: 10, color: C.warmGrey, padding: "3px 8px", border: `1px solid ${C.bd}`, borderRadius: 3 }}>{t}</span>
@@ -563,9 +563,9 @@ function DemoAnimation({ demoImage, demoAfterImage, demoCost, demoName }) {
         {/* Popup */}
         <div style={{ position: "absolute", top: 16, right: 16, width: "clamp(180px,40%,240px)", background: C.dark, border: `1px solid ${C.bd}`, borderRadius: 8, padding: "14px 16px", boxShadow: "0 8px 32px rgba(0,0,0,0.4)" }}>
           <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 13, color: C.paper, fontWeight: 600, marginBottom: 4 }}>{name}</div>
-          <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: C.warmGrey, marginBottom: 12 }}>\u00A3340,000+ \u00B7 4 bed \u00B7 Detached</div>
+          <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 10, color: C.warmGrey, marginBottom: 12 }}>{"£340,000+ · 4 bed · Detached"}</div>
           <div style={{ padding: "8px 12px", background: C.terracotta, borderRadius: 4, textAlign: "center", fontFamily: "'Bebas Neue',sans-serif", fontSize: 11, color: C.paper, letterSpacing: "0.08em", cursor: "pointer" }}>
-            ANALYSE THIS PROPERTY \u2192
+            {"ANALYSE THIS PROPERTY →"}
           </div>
         </div>
       </div>
@@ -576,7 +576,7 @@ function DemoAnimation({ demoImage, demoAfterImage, demoCost, demoName }) {
         <div style={{ display: "flex", flexDirection: "column", gap: 8, width: "100%", maxWidth: 280 }}>
           {DEMO_AGENTS.map((agent, i) => (
             <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, opacity: phase === 2 ? 1 : 0, transition: `opacity 0.3s ease ${0.3 + i * 0.25}s` }}>
-              <div style={{ width: 20, height: 20, borderRadius: "50%", background: `${C.sage}30`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: C.sage }}>\u2713</div>
+              <div style={{ width: 20, height: 20, borderRadius: "50%", background: `${C.sage}30`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, color: C.sage }}>{"\u2713"}</div>
               <span style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: C.paper }}>{agent}</span>
             </div>
           ))}
@@ -717,12 +717,12 @@ export default function HomePage() {
 
             {/* What it actually does — clear product statement */}
             <p style={{ fontFamily: "'EB Garamond',serif", fontSize: "clamp(15px,1.6vw,18px)", color: C.tertGrey, lineHeight: 1.7, margin: "0 auto 12px", maxWidth: 520 }}>
-              A Chrome extension that reads any Rightmove listing and gives you the full picture: architectural reading, renovation concept, and cost estimate \u2014 in 90 seconds.
+              A Chrome extension that reads any Rightmove listing and gives you the full picture: architectural reading, renovation concept, and cost estimate {"\u2014"} in 90 seconds.
             </p>
 
             {/* How it works in one line */}
             <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: C.warmGrey, letterSpacing: "0.04em", lineHeight: 1.8 }}>
-              Install \u00B7 Browse Rightmove \u00B7 Click \u201CAnalyse\u201D \u00B7 Full report in 90 seconds
+              {"Install · Browse Rightmove · Click \u201CAnalyse\u201D · Full report in 90 seconds"}
             </div>
           </div>
         </div>
@@ -762,7 +762,7 @@ export default function HomePage() {
               See what your building is hiding.
             </h2>
             <p style={{ fontFamily: "'EB Garamond',serif", fontSize: "clamp(15px,1.5vw,17px)", color: C.tertGrey, lineHeight: 1.7, margin: "0 0 24px" }}>
-              Piega lives on Rightmove. Install the extension. Browse any listing. Click once. The full reading arrives before you\u2019ve finished your tea.
+              {"Piega lives on Rightmove. Install the extension. Browse any listing. Click once. The full reading arrives before you\u2019ve finished your tea."}
             </p>
 
             {/* Desktop — Chrome extension card */}
@@ -773,17 +773,17 @@ export default function HomePage() {
                 </div>
                 <div style={{ textAlign: "left" }}>
                   <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 14, fontWeight: 600, color: C.paper }}>Add Piega to Chrome</div>
-                  <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: C.tertGrey }}>Free \u00B7 No signup \u00B7 10 seconds</div>
+                  <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: C.tertGrey }}>{"Free · No signup · 10 seconds"}</div>
                 </div>
               </div>
               <a href="#chrome-store" style={{ display: "block", padding: "10px 16px", background: C.terracotta, borderRadius: 4, textAlign: "center", fontFamily: "'Bebas Neue',sans-serif", fontSize: 14, color: C.paper, letterSpacing: "0.1em", textDecoration: "none", transition: "opacity 0.2s" }}>
-                ADD TO CHROME \u2192
+                {"ADD TO CHROME →"}
               </a>
             </div>
 
             {/* Desktop — 4 quiet steps */}
             <div className="piega-desktop-only" style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: C.warmGrey, lineHeight: 2, marginBottom: 20 }}>
-              \u2460 Add to Chrome &nbsp;\u00B7&nbsp; \u2461 Browse Rightmove &nbsp;\u00B7&nbsp; \u2462 Click \u201CAnalyse\u201D &nbsp;\u00B7&nbsp; \u2463 Full reading in 90s
+              {"\u2460 Add to Chrome  ·  \u2461 Browse Rightmove  ·  \u2462 Click \u201CAnalyse\u201D  ·  \u2463 Full reading in 90s"}
             </div>
 
             {/* Mobile — explain desktop-only */}
@@ -798,7 +798,7 @@ export default function HomePage() {
             </div>
 
             {/* Divider */}
-            <div className="piega-desktop-only" style={{ fontFamily: "'Inter',sans-serif", fontSize: 11, color: C.warmGrey, opacity: 0.5, margin: "0 0 16px" }}>\u2014 or \u2014</div>
+            <div className="piega-desktop-only" style={{ fontFamily: "'Inter',sans-serif", fontSize: 11, color: C.warmGrey, opacity: 0.5, margin: "0 0 16px" }}>{"\u2014 or \u2014"}</div>
 
             <p className="piega-desktop-only" style={{ fontFamily: "'EB Garamond',serif", fontSize: 14, color: C.warmGrey, margin: "0 0 12px" }}>
               Not ready to install? Leave your email.
@@ -808,7 +808,7 @@ export default function HomePage() {
             {done ? (
               <div style={{ padding: "16px 0" }}>
                 <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 36, color: C.terracotta, letterSpacing: "0.04em" }}>DONE.</div>
-                <p style={{ fontFamily: "'EB Garamond',serif", fontSize: 14, color: C.tertGrey, marginTop: 8 }}>We\u2019ll be in touch.</p>
+                <p style={{ fontFamily: "'EB Garamond',serif", fontSize: 14, color: C.tertGrey, marginTop: 8 }}>{"We\u2019ll be in touch."}</p>
               </div>
             ) : (
               <div style={{ display: "flex", gap: 0, maxWidth: 380, margin: "0 auto" }}>
@@ -854,7 +854,7 @@ export default function HomePage() {
         <footer style={{ padding: "28px 24px 24px", textAlign: "center", borderTop: `1px solid ${C.bd}` }}>
           <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 16, fontStyle: "italic", color: C.accent, marginBottom: 6 }}>Piega.</div>
           <div style={{ fontFamily: "'EB Garamond',serif", fontSize: 12, color: C.warmGrey, marginBottom: 3 }}>
-            Property intelligence \u00B7 United Kingdom
+            {"Property intelligence · United Kingdom"}
           </div>
           <div style={{ fontFamily: "'EB Garamond',serif", fontSize: 12, color: C.warmGrey, opacity: 0.5 }}>
             Not affiliated with any estate agent. That is the point.

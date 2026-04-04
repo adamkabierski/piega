@@ -3,9 +3,56 @@ import { useState, useEffect } from "react";
 import { C } from "@/lib/theme";
 import { AGENTS_URL } from "@/lib/config";
 import { STYLES } from "@/components/landing/styles";
-import { reportToBlocks, TEXT_BLOCKS } from "@/components/landing/data";
-import MosaicBlock from "@/components/landing/MosaicBlocks";
+import { TEXT_BLOCKS } from "@/components/landing/data";
 import DemoAnimation from "@/components/landing/DemoAnimation";
+import ReportCard from "@/components/landing/ReportCard";
+
+/* ---------- Editorial text break (between report cards) ---------- */
+
+function TextBreak({ block }) {
+  const base = {
+    maxWidth: 520, margin: "0 auto", padding: "0 24px",
+    textAlign: "center",
+  };
+
+  if (block.variant === "confrontation") {
+    return (
+      <div style={base}>
+        {block.lines.map((line, i) => (
+          <div key={i} style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: "clamp(14px,1.8vw,17px)", color: C.paper, opacity: 0.35, letterSpacing: "0.04em", lineHeight: 1.6 }}>{line}</div>
+        ))}
+        <div style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(16px,2vw,20px)", fontStyle: "italic", color: C.terracotta, marginTop: 14, lineHeight: 1.5, whiteSpace: "pre-line" }}>{block.punchline}</div>
+      </div>
+    );
+  }
+
+  if (block.variant === "time") {
+    return (
+      <div style={base}>
+        <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: "clamp(40px,7vw,64px)", color: C.paper, letterSpacing: "0.02em", lineHeight: 1 }}>{block.number}</div>
+        {block.lines.map((line, i) => (
+          <div key={i} style={{ fontFamily: "'EB Garamond',serif", fontSize: 16, fontStyle: "italic", color: C.tertGrey, lineHeight: 1.6, marginTop: i === 0 ? 10 : 0 }}>{line}</div>
+        ))}
+      </div>
+    );
+  }
+
+  if (block.variant === "hook") {
+    return (
+      <div style={{ ...base, maxWidth: 560, textAlign: "left" }}>
+        <div style={{
+          fontFamily: "'Playfair Display',serif", fontSize: "clamp(16px,2vw,19px)",
+          fontStyle: "italic", color: C.paper, opacity: 0.8,
+          lineHeight: 1.7, whiteSpace: "pre-line",
+          borderLeft: `3px solid ${C.terracotta}`,
+          paddingLeft: 20,
+        }}>{block.text}</div>
+      </div>
+    );
+  }
+
+  return null;
+}
 
 export default function HomePage() {
   const [email, setEmail] = useState("");
@@ -24,30 +71,33 @@ export default function HomePage() {
     })();
   }, []);
 
-  /* Build mosaic blocks */
-  const dataBlocks = reports.flatMap(reportToBlocks);
-  const seen = new Set();
-  const uniqueBlocks = dataBlocks.filter((b) => {
-    const key = b.image ?? b.afterImage ?? b.videoUrl ?? b.number ?? b.text ?? "";
-    if (!key || seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
+  /* Reports with visuals, sorted by completeness */
+  const visualReports = reports
+    .filter((r) =>
+      r.results?.renovation_visualisation?.exteriors?.length ||
+      r.results?.renovation_visualisation?.interiors?.length
+    )
+    .sort((a, b) => {
+      const score = (r) =>
+        (r.results?.cost_estimate ? 2 : 0) +
+        (r.results?.narrative ? 1 : 0);
+      return score(b) - score(a);
+    });
 
-  /* Interleave hardcoded text blocks every ~5 data blocks */
-  const allBlocks = [];
+  /* Interleave: TEXT → REPORT → TEXT → REPORT → ... */
+  const items = [];
   const texts = [...TEXT_BLOCKS];
-  let ti = 0;
-  for (let i = 0; i < uniqueBlocks.length; i++) {
-    allBlocks.push({ ...uniqueBlocks[i], _key: `d-${i}` });
-    if ((i + 1) % 5 === 0 && ti < texts.length) {
-      allBlocks.push(texts[ti++]);
+  let ti = 0, ri = 0;
+  while (ti < texts.length || ri < visualReports.length) {
+    if (ti < texts.length) {
+      items.push({ type: "text", block: texts[ti], key: texts[ti]._key });
+      ti++;
+    }
+    if (ri < visualReports.length) {
+      items.push({ type: "report", report: visualReports[ri], key: `r-${visualReports[ri].id}` });
+      ri++;
     }
   }
-  while (ti < texts.length) allBlocks.push(texts[ti++]);
-
-  // If zero data blocks, still show text blocks
-  const hasMosaic = allBlocks.length > 0;
 
   /* Demo animation data — use best pipeline report or fallback */
   const demoReport = reports.find((r) => r.results?.renovation_visualisation?.exteriors?.length);
@@ -84,50 +134,28 @@ export default function HomePage() {
       <div className="piega-page">
 
         {/* ────────────────────────────────────────────────────────────
-            ZONE 1 — HERO (compact — mosaic peeks above fold)
+            ZONE 1 — HERO (compact typographic promise)
             ──────────────────────────────────────────────────────────── */}
         <div style={{ padding: "clamp(24px,4vh,40px) 24px clamp(20px,3vh,32px)", textAlign: "center" }}>
           <div style={{ maxWidth: 680, margin: "0 auto" }}>
-            {/* Wordmark */}
             <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 16, fontStyle: "italic", color: C.accent, marginBottom: "clamp(16px,3vh,28px)" }}>Piega</div>
-
-            {/* Headline */}
             <h1 style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(28px,5vw,48px)", fontWeight: 700, color: C.paper, lineHeight: 1.15, margin: "0 0 6px" }}>
               The estate agent told you a story.
             </h1>
-
-            {/* Italic line */}
             <div style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(26px,4.5vw,44px)", fontStyle: "italic", color: C.terracotta, lineHeight: 1.2, margin: "8px 0 16px" }}>
               We tell you the building.
             </div>
-
-            {/* What it actually does — clear product statement */}
             <p style={{ fontFamily: "'EB Garamond',serif", fontSize: "clamp(15px,1.6vw,18px)", color: C.tertGrey, lineHeight: 1.7, margin: "0 auto 12px", maxWidth: 520 }}>
               A Chrome extension that reads any Rightmove listing and gives you the full picture: architectural reading, renovation concept, and cost estimate {"\u2014"} in 90 seconds.
             </p>
-
-            {/* How it works in one line */}
             <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: C.warmGrey, letterSpacing: "0.04em", lineHeight: 1.8 }}>
-              {"Install · Browse Rightmove · Click \u201CAnalyse\u201D · Full report in 90 seconds"}
+              {"Install \u00B7 Browse Rightmove \u00B7 Click \u201CAnalyse\u201D \u00B7 Full report in 90 seconds"}
             </div>
           </div>
         </div>
 
         {/* ────────────────────────────────────────────────────────────
-            ZONE 2 — MOSAIC (no background change — stays dark)
-            ──────────────────────────────────────────────────────────── */}
-        {hasMosaic && (
-          <div style={{ padding: "clamp(16px,3vw,32px) 0" }}>
-            <div className="piega-mosaic">
-              {allBlocks.map((block, i) => (
-                <MosaicBlock key={block._key ?? `b-${i}`} block={block} index={i} />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* ────────────────────────────────────────────────────────────
-            ZONE 3 — DEMO ANIMATION
+            ZONE 2 — DEMO ANIMATION (how it works)
             ──────────────────────────────────────────────────────────── */}
         <div style={{ padding: "clamp(20px,3vw,40px) 24px" }}>
           <DemoAnimation
@@ -139,6 +167,27 @@ export default function HomePage() {
             demoName={demoName}
           />
         </div>
+
+        {/* ────────────────────────────────────────────────────────────
+            ZONE 3 — REAL REPORTS (evidence, not widgets)
+            Text breaks interleaved with report cards.
+            ──────────────────────────────────────────────────────────── */}
+        {items.length > 0 && (
+          <div style={{ padding: "clamp(40px,6vh,64px) 0" }}>
+            <div style={{ maxWidth: 900, margin: "0 auto", borderTop: `1px solid ${C.bd}` }} />
+            <div style={{
+              display: "flex", flexDirection: "column",
+              gap: "clamp(48px,8vh,80px)",
+              paddingTop: "clamp(48px,8vh,80px)",
+            }}>
+              {items.map((item) =>
+                item.type === "report"
+                  ? <ReportCard key={item.key} report={item.report} />
+                  : <TextBreak key={item.key} block={item.block} />
+              )}
+            </div>
+          </div>
+        )}
 
         {/* ────────────────────────────────────────────────────────────
             ZONE 4 — CHROME EXTENSION CTA + EMAIL CAPTURE
@@ -161,17 +210,17 @@ export default function HomePage() {
                 </div>
                 <div style={{ textAlign: "left" }}>
                   <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 14, fontWeight: 600, color: C.paper }}>Add Piega to Chrome</div>
-                  <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: C.tertGrey }}>{"Free · No signup · 10 seconds"}</div>
+                  <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: C.tertGrey }}>{"Free \u00B7 No signup \u00B7 10 seconds"}</div>
                 </div>
               </div>
               <a href="#chrome-store" style={{ display: "block", padding: "10px 16px", background: C.terracotta, borderRadius: 4, textAlign: "center", fontFamily: "'Bebas Neue',sans-serif", fontSize: 14, color: C.paper, letterSpacing: "0.1em", textDecoration: "none", transition: "opacity 0.2s" }}>
-                {"ADD TO CHROME →"}
+                {"ADD TO CHROME \u2192"}
               </a>
             </div>
 
             {/* Desktop — 4 quiet steps */}
             <div className="piega-desktop-only" style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: C.warmGrey, lineHeight: 2, marginBottom: 20 }}>
-              {"\u2460 Add to Chrome  ·  \u2461 Browse Rightmove  ·  \u2462 Click \u201CAnalyse\u201D  ·  \u2463 Full reading in 90s"}
+              {"\u2460 Add to Chrome  \u00B7  \u2461 Browse Rightmove  \u00B7  \u2462 Click \u201CAnalyse\u201D  \u00B7  \u2463 Full reading in 90s"}
             </div>
 
             {/* Mobile — explain desktop-only */}
@@ -242,7 +291,7 @@ export default function HomePage() {
         <footer style={{ padding: "28px 24px 24px", textAlign: "center", borderTop: `1px solid ${C.bd}` }}>
           <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 16, fontStyle: "italic", color: C.accent, marginBottom: 6 }}>Piega.</div>
           <div style={{ fontFamily: "'EB Garamond',serif", fontSize: 12, color: C.warmGrey, marginBottom: 3 }}>
-            {"Property intelligence · United Kingdom"}
+            {"Property intelligence \u00B7 United Kingdom"}
           </div>
           <div style={{ fontFamily: "'EB Garamond',serif", fontSize: 12, color: C.warmGrey, opacity: 0.5 }}>
             Not affiliated with any estate agent. That is the point.

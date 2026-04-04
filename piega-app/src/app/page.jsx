@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { C } from "@/lib/theme";
 import { AGENTS_URL } from "@/lib/config";
 import { STYLES } from "@/components/landing/styles";
-import { TEXT_BLOCKS } from "@/components/landing/data";
+import { TEXT_BLOCKS, reportsToGridCards } from "@/components/landing/data";
 import DemoAnimation from "@/components/landing/DemoAnimation";
 import ReportCard from "@/components/landing/ReportCard";
 
@@ -104,6 +104,10 @@ export default function HomePage() {
   const demoCost = demoEnv ? `\u00A3${Math.round((demoEnv.low ?? 0) / 1000)}K \u2013 \u00A3${Math.round((demoEnv.high ?? 0) / 1000)}K` : null;
   const demoName = demoReport?.listing?.address?.split(",")[0]?.trim() ?? null;
 
+  /* Property cards for CTA grid */
+  const gridCards = reportsToGridCards(reports);
+  const hasGrid = gridCards.length >= 4;
+
   /* Email submit */
   async function submitEmail() {
     if (!email || !email.includes("@")) {
@@ -198,99 +202,191 @@ export default function HomePage() {
         )}
 
         {/* ────────────────────────────────────────────────────────────
-            ZONE 4 — CHROME EXTENSION CTA + EMAIL CAPTURE
+            ZONE 4 — SPLIT: sticky CTA left + image mosaic right
+            (falls back to stacked centred CTA when no grid tiles)
             ──────────────────────────────────────────────────────────── */}
-        <div style={{ padding: "clamp(32px,5vh,56px) 24px", textAlign: "center", borderTop: `1px solid ${C.bd}` }}>
-          <div style={{ maxWidth: 540, margin: "0 auto" }}>
+        <div style={{ borderTop: `1px solid ${C.bd}` }}>
+          {hasGrid ? (
+            <div className="piega-split">
+              {/* Left — sticky CTA */}
+              <div className="piega-split-cta">
+                <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(22px,3vw,28px)", fontWeight: 700, color: C.paper, margin: "0 0 12px", textAlign: "left" }}>
+                  See what your building is hiding.
+                </h2>
+                <p style={{ fontFamily: "'EB Garamond',serif", fontSize: "clamp(14px,1.4vw,16px)", color: C.tertGrey, lineHeight: 1.7, margin: "0 0 24px", textAlign: "left" }}>
+                  {"Piega lives on Rightmove. Install the extension. Browse any listing. Click once. The full reading arrives before you\u2019ve finished your tea."}
+                </p>
 
-            <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(22px,4vw,30px)", fontWeight: 700, color: C.paper, margin: "0 0 12px" }}>
-              See what your building is hiding.
-            </h2>
-            <p style={{ fontFamily: "'EB Garamond',serif", fontSize: "clamp(15px,1.5vw,17px)", color: C.tertGrey, lineHeight: 1.7, margin: "0 0 24px" }}>
-              {"Piega lives on Rightmove. Install the extension. Browse any listing. Click once. The full reading arrives before you\u2019ve finished your tea."}
-            </p>
-
-            {/* Desktop — Chrome extension card */}
-            <div className="piega-desktop-only" style={{ background: C.darkMid, border: `1px solid ${C.bd}`, borderRadius: 8, padding: "20px 24px", marginBottom: 16, maxWidth: 400, marginLeft: "auto", marginRight: "auto" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 16 }}>
-                <div style={{ width: 40, height: 40, borderRadius: 8, background: C.darkCard, display: "flex", alignItems: "center", justifyContent: "center", border: `1px solid ${C.bd}`, flexShrink: 0 }}>
-                  <span style={{ fontFamily: "'Playfair Display',serif", fontSize: 16, fontStyle: "italic", color: C.accent }}>P</span>
+                {/* Chrome extension card */}
+                <div className="piega-desktop-only" style={{ background: C.darkMid, border: `1px solid ${C.bd}`, borderRadius: 8, padding: "16px 20px", marginBottom: 14 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
+                    <div style={{ width: 36, height: 36, borderRadius: 8, background: C.darkCard, display: "flex", alignItems: "center", justifyContent: "center", border: `1px solid ${C.bd}`, flexShrink: 0 }}>
+                      <span style={{ fontFamily: "'Playfair Display',serif", fontSize: 14, fontStyle: "italic", color: C.accent }}>P</span>
+                    </div>
+                    <div style={{ textAlign: "left" }}>
+                      <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, fontWeight: 600, color: C.paper }}>Add Piega to Chrome</div>
+                      <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 11, color: C.tertGrey }}>{"Free \u00B7 No signup \u00B7 10 seconds"}</div>
+                    </div>
+                  </div>
+                  <a href="#chrome-store" style={{ display: "block", padding: "9px 14px", background: C.terracotta, borderRadius: 4, textAlign: "center", fontFamily: "'Bebas Neue',sans-serif", fontSize: 13, color: C.paper, letterSpacing: "0.1em", textDecoration: "none" }}>
+                    {"ADD TO CHROME \u2192"}
+                  </a>
                 </div>
-                <div style={{ textAlign: "left" }}>
-                  <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 14, fontWeight: 600, color: C.paper }}>Add Piega to Chrome</div>
-                  <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: C.tertGrey }}>{"Free \u00B7 No signup \u00B7 10 seconds"}</div>
+
+                {/* Mobile */}
+                <div className="piega-mobile-only" style={{ marginBottom: 16 }}>
+                  <p style={{ fontFamily: "'EB Garamond',serif", fontSize: 14, color: C.tertGrey, lineHeight: 1.7, margin: "0 0 6px" }}>
+                    Chrome extension {"\u00B7"} Desktop only.
+                  </p>
+                </div>
+
+                {/* Email */}
+                <div className="piega-desktop-only" style={{ fontFamily: "'Inter',sans-serif", fontSize: 11, color: C.warmGrey, opacity: 0.5, margin: "0 0 10px" }}>{"\u2014 or \u2014"}</div>
+                <p style={{ fontFamily: "'EB Garamond',serif", fontSize: 13, color: C.warmGrey, margin: "0 0 10px", textAlign: "left" }}>
+                  Not ready? Leave your email.
+                </p>
+                {done ? (
+                  <div>
+                    <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 28, color: C.terracotta, letterSpacing: "0.04em" }}>DONE.</div>
+                    <p style={{ fontFamily: "'EB Garamond',serif", fontSize: 13, color: C.tertGrey, marginTop: 4 }}>{"We\u2019ll be in touch."}</p>
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", gap: 0 }}>
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && submitEmail()}
+                      placeholder="your@email.com"
+                      style={{
+                        flex: 1, padding: "9px 12px", border: `1px solid ${formError ? C.terracotta : C.bd}`,
+                        borderRight: "none", borderRadius: "4px 0 0 4px",
+                        background: C.darkMid, color: C.paper,
+                        fontFamily: "'EB Garamond',serif", fontSize: 14,
+                        outline: "none", transition: "border-color 0.3s",
+                      }}
+                    />
+                    <button
+                      onClick={submitEmail}
+                      disabled={submitting}
+                      style={{
+                        padding: "9px 14px", border: "none", borderRadius: "0 4px 4px 0",
+                        background: C.terracotta, color: C.paper, cursor: "pointer",
+                        fontFamily: "'Bebas Neue',sans-serif", fontSize: 12, letterSpacing: "0.1em",
+                        opacity: submitting ? 0.5 : 1, transition: "opacity 0.2s",
+                      }}
+                    >
+                      {submitting ? "\u2026" : "NOTIFY ME"}
+                    </button>
+                  </div>
+                )}
+                <p style={{ fontFamily: "'EB Garamond',serif", fontSize: 11, color: C.warmGrey, opacity: 0.4, marginTop: 10, textAlign: "left" }}>
+                  No payment. No signup. Just the building.
+                </p>
+              </div>
+
+              {/* Right — property card grid */}
+              <div className="piega-split-grid-wrap">
+                <div className="piega-card-grid">
+                  {gridCards.map((card, i) => (
+                    <a
+                      key={`gc-${i}`}
+                      href={card.reportId ? `/report/${card.reportId}` : undefined}
+                      className="piega-prop-card"
+                    >
+                      <div className="piega-card-img-wrap">
+                        <img className="piega-card-before" src={card.originalUrl} alt="" loading="lazy" onError={(e) => { e.target.style.display = "none"; }} />
+                        <img className="piega-card-after" src={card.renovatedUrl} alt="" loading="lazy" onError={(e) => { e.target.style.display = "none"; }} />
+                        <div className="piega-card-badge">{card.label.toUpperCase()}</div>
+                      </div>
+                      <div className="piega-card-meta">
+                        <p className="piega-card-name">{card.name}</p>
+                        {(card.archetypeLabel || card.era) && (
+                          <p className="piega-card-arch">{[card.era, card.archetypeLabel].filter(Boolean).join(" \u00B7 ")}</p>
+                        )}
+                      </div>
+                    </a>
+                  ))}
                 </div>
               </div>
-              <a href="#chrome-store" style={{ display: "block", padding: "10px 16px", background: C.terracotta, borderRadius: 4, textAlign: "center", fontFamily: "'Bebas Neue',sans-serif", fontSize: 14, color: C.paper, letterSpacing: "0.1em", textDecoration: "none", transition: "opacity 0.2s" }}>
-                {"ADD TO CHROME \u2192"}
-              </a>
             </div>
-
-            {/* Desktop — 4 quiet steps */}
-            <div className="piega-desktop-only" style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: C.warmGrey, lineHeight: 2, marginBottom: 20 }}>
-              {"\u2460 Add to Chrome  \u00B7  \u2461 Browse Rightmove  \u00B7  \u2462 Click \u201CAnalyse\u201D  \u00B7  \u2463 Full reading in 90s"}
-            </div>
-
-            {/* Mobile — explain desktop-only */}
-            <div className="piega-mobile-only" style={{ marginBottom: 20 }}>
-              <p style={{ fontFamily: "'EB Garamond',serif", fontSize: 15, color: C.tertGrey, lineHeight: 1.7, margin: "0 0 6px" }}>
-                Piega is a Chrome extension that reads any Rightmove listing and shows you what the estate agent left out.
-              </p>
-              <p style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: C.warmGrey, margin: "0 0 12px" }}>Currently desktop only.</p>
-              <p style={{ fontFamily: "'EB Garamond',serif", fontSize: 15, color: C.paper, margin: "0 0 16px" }}>
-                Send yourself the link and try it tonight.
-              </p>
-            </div>
-
-            {/* Divider */}
-            <div className="piega-desktop-only" style={{ fontFamily: "'Inter',sans-serif", fontSize: 11, color: C.warmGrey, opacity: 0.5, margin: "0 0 16px" }}>{"\u2014 or \u2014"}</div>
-
-            <p className="piega-desktop-only" style={{ fontFamily: "'EB Garamond',serif", fontSize: 14, color: C.warmGrey, margin: "0 0 12px" }}>
-              Not ready to install? Leave your email.
-            </p>
-
-            {/* Email capture */}
-            {done ? (
-              <div style={{ padding: "16px 0" }}>
-                <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 36, color: C.terracotta, letterSpacing: "0.04em" }}>DONE.</div>
-                <p style={{ fontFamily: "'EB Garamond',serif", fontSize: 14, color: C.tertGrey, marginTop: 8 }}>{"We\u2019ll be in touch."}</p>
+          ) : (
+            /* Fallback: centred CTA (no grid tiles available) */
+            <div style={{ padding: "clamp(32px,5vh,56px) 24px", textAlign: "center" }}>
+              <div style={{ maxWidth: 540, margin: "0 auto" }}>
+                <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(22px,4vw,30px)", fontWeight: 700, color: C.paper, margin: "0 0 12px" }}>
+                  See what your building is hiding.
+                </h2>
+                <p style={{ fontFamily: "'EB Garamond',serif", fontSize: "clamp(15px,1.5vw,17px)", color: C.tertGrey, lineHeight: 1.7, margin: "0 0 24px" }}>
+                  {"Piega lives on Rightmove. Install the extension. Browse any listing. Click once. The full reading arrives before you\u2019ve finished your tea."}
+                </p>
+                <div className="piega-desktop-only" style={{ background: C.darkMid, border: `1px solid ${C.bd}`, borderRadius: 8, padding: "20px 24px", marginBottom: 16, maxWidth: 400, marginLeft: "auto", marginRight: "auto" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 16 }}>
+                    <div style={{ width: 40, height: 40, borderRadius: 8, background: C.darkCard, display: "flex", alignItems: "center", justifyContent: "center", border: `1px solid ${C.bd}`, flexShrink: 0 }}>
+                      <span style={{ fontFamily: "'Playfair Display',serif", fontSize: 16, fontStyle: "italic", color: C.accent }}>P</span>
+                    </div>
+                    <div style={{ textAlign: "left" }}>
+                      <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 14, fontWeight: 600, color: C.paper }}>Add Piega to Chrome</div>
+                      <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: C.tertGrey }}>{"Free \u00B7 No signup \u00B7 10 seconds"}</div>
+                    </div>
+                  </div>
+                  <a href="#chrome-store" style={{ display: "block", padding: "10px 16px", background: C.terracotta, borderRadius: 4, textAlign: "center", fontFamily: "'Bebas Neue',sans-serif", fontSize: 14, color: C.paper, letterSpacing: "0.1em", textDecoration: "none" }}>
+                    {"ADD TO CHROME \u2192"}
+                  </a>
+                </div>
+                <div className="piega-mobile-only" style={{ marginBottom: 20 }}>
+                  <p style={{ fontFamily: "'EB Garamond',serif", fontSize: 15, color: C.tertGrey, lineHeight: 1.7, margin: "0 0 6px" }}>
+                    Chrome extension {"\u00B7"} Desktop only.
+                  </p>
+                  <p style={{ fontFamily: "'EB Garamond',serif", fontSize: 15, color: C.paper, margin: "0 0 16px" }}>
+                    Send yourself the link and try it tonight.
+                  </p>
+                </div>
+                <div className="piega-desktop-only" style={{ fontFamily: "'Inter',sans-serif", fontSize: 11, color: C.warmGrey, opacity: 0.5, margin: "0 0 16px" }}>{"\u2014 or \u2014"}</div>
+                <p className="piega-desktop-only" style={{ fontFamily: "'EB Garamond',serif", fontSize: 14, color: C.warmGrey, margin: "0 0 12px" }}>
+                  Not ready? Leave your email.
+                </p>
+                {done ? (
+                  <div style={{ padding: "16px 0" }}>
+                    <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 36, color: C.terracotta, letterSpacing: "0.04em" }}>DONE.</div>
+                    <p style={{ fontFamily: "'EB Garamond',serif", fontSize: 14, color: C.tertGrey, marginTop: 8 }}>{"We\u2019ll be in touch."}</p>
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", gap: 0, maxWidth: 380, margin: "0 auto" }}>
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && submitEmail()}
+                      placeholder="your@email.com"
+                      style={{
+                        flex: 1, padding: "10px 14px", border: `1px solid ${formError ? C.terracotta : C.bd}`,
+                        borderRight: "none", borderRadius: "4px 0 0 4px",
+                        background: C.darkMid, color: C.paper,
+                        fontFamily: "'EB Garamond',serif", fontSize: 15,
+                        outline: "none", transition: "border-color 0.3s",
+                      }}
+                    />
+                    <button
+                      onClick={submitEmail}
+                      disabled={submitting}
+                      style={{
+                        padding: "10px 18px", border: "none", borderRadius: "0 4px 4px 0",
+                        background: C.terracotta, color: C.paper, cursor: "pointer",
+                        fontFamily: "'Bebas Neue',sans-serif", fontSize: 13, letterSpacing: "0.1em",
+                        opacity: submitting ? 0.5 : 1, transition: "opacity 0.2s",
+                      }}
+                    >
+                      {submitting ? "\u2026" : "NOTIFY ME"}
+                    </button>
+                  </div>
+                )}
+                <p style={{ fontFamily: "'EB Garamond',serif", fontSize: 12, color: C.warmGrey, opacity: 0.5, marginTop: 12 }}>
+                  No payment. No signup. Just the building.
+                </p>
               </div>
-            ) : (
-              <div style={{ display: "flex", gap: 0, maxWidth: 380, margin: "0 auto" }}>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && submitEmail()}
-                  placeholder="your@email.com"
-                  style={{
-                    flex: 1, padding: "10px 14px", border: `1px solid ${formError ? C.terracotta : C.bd}`,
-                    borderRight: "none", borderRadius: "4px 0 0 4px",
-                    background: C.darkMid, color: C.paper,
-                    fontFamily: "'EB Garamond',serif", fontSize: 15,
-                    outline: "none", transition: "border-color 0.3s",
-                  }}
-                />
-                <button
-                  onClick={submitEmail}
-                  disabled={submitting}
-                  style={{
-                    padding: "10px 18px", border: "none", borderRadius: "0 4px 4px 0",
-                    background: C.terracotta, color: C.paper, cursor: "pointer",
-                    fontFamily: "'Bebas Neue',sans-serif", fontSize: 13, letterSpacing: "0.1em",
-                    opacity: submitting ? 0.5 : 1, transition: "opacity 0.2s",
-                  }}
-                >
-                  {submitting ? "\u2026" : "NOTIFY ME"}
-                </button>
-              </div>
-            )}
-
-            {/* Sub-note */}
-            <p style={{ fontFamily: "'EB Garamond',serif", fontSize: 12, color: C.warmGrey, opacity: 0.5, marginTop: 12 }}>
-              No payment. No signup. Just the building.
-            </p>
-          </div>
+            </div>
+          )}
         </div>
 
         {/* ────────────────────────────────────────────────────────────

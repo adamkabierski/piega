@@ -112,6 +112,36 @@ export function reportToBlocks(report) {
   return blocks;
 }
 
+/* ── Property cards for the CTA grid (before/after pairs, 16:9) ── */
+
+export function reportsToGridCards(reports) {
+  const cards = [];
+  for (const report of reports) {
+    const vis = report.results?.renovation_visualisation;
+    if (!vis) continue;
+    const listing = report.listing ?? {};
+    const classification = report.results?.classification;
+    const archetype = classification?.archetype;
+    const name = listing.address?.split(",")[0]?.trim() ?? "Property";
+    const archetypeLabel = archetype?.displayName ?? "";
+    const era = archetype?.era ?? "";
+    const all = [...(vis?.exteriors ?? []), ...(vis?.interiors ?? [])];
+    for (const img of all) {
+      if (!img.renovatedUrl || !img.originalUrl) continue;
+      cards.push({
+        originalUrl: img.originalUrl,
+        renovatedUrl: img.renovatedUrl,
+        label: img.room ?? img.depicts ?? "Exterior",
+        name,
+        archetypeLabel,
+        era,
+        reportId: report.id,
+      });
+    }
+  }
+  return cards;
+}
+
 export const TEXT_BLOCKS = [
   {
     _key: "tb-scroll", variant: "confrontation",

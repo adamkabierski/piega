@@ -56,21 +56,7 @@ export const STYLES = `
     display: grid;
     grid-template-columns: 340px 1fr;
     gap: 0;
-    min-height: 600px;
-    max-height: 800px;
-    overflow: hidden;
     position: relative;
-  }
-  .piega-split::after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    right: 0;
-    width: calc(100% - 340px);
-    height: 180px;
-    background: linear-gradient(to bottom, transparent, ${C.dark});
-    pointer-events: none;
-    z-index: 2;
   }
   .piega-split-cta {
     position: sticky;
@@ -80,14 +66,25 @@ export const STYLES = `
     display: flex;
     flex-direction: column;
     justify-content: center;
+    max-height: 100vh;
   }
   .piega-split-grid-wrap {
-    overflow-y: auto;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
+    overflow: hidden;
+    max-height: 1000px;
+    position: relative;
     padding: 12px 12px 12px 0;
   }
-  .piega-split-grid-wrap::-webkit-scrollbar { display: none; }
+  .piega-split-grid-wrap::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 140px;
+    background: linear-gradient(to bottom, transparent, ${C.dark});
+    pointer-events: none;
+    z-index: 2;
+  }
   .piega-card-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
@@ -252,15 +249,12 @@ export const STYLES = `
   @media (max-width: 900px) {
     .piega-split {
       grid-template-columns: 1fr;
-      max-height: none;
-    }
-    .piega-split::after {
-      width: 100%;
     }
     .piega-split-cta {
       position: static;
       padding: 40px 24px;
       text-align: center;
+      max-height: none;
     }
     .piega-split-grid-wrap {
       max-height: 500px;

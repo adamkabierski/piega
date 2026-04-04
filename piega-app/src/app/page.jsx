@@ -5,7 +5,6 @@ import { AGENTS_URL } from "@/lib/config";
 import { STYLES } from "@/components/landing/styles";
 import { TEXT_BLOCKS, reportsToGridCards } from "@/components/landing/data";
 import DemoAnimation from "@/components/landing/DemoAnimation";
-import ReportCard from "@/components/landing/ReportCard";
 
 /* ---------- Mini slider card (grid) ---------- */
 
@@ -140,29 +139,6 @@ export default function HomePage() {
     })();
   }, []);
 
-  /* Reports with visuals, sorted by recency */
-  const visualReports = reports
-    .filter((r) =>
-      r.results?.renovation_visualisation?.exteriors?.length ||
-      r.results?.renovation_visualisation?.interiors?.length
-    )
-    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-
-  /* Interleave: TEXT → REPORT → TEXT → REPORT → ... */
-  const items = [];
-  const texts = [...TEXT_BLOCKS];
-  let ti = 0, ri = 0;
-  while (ti < texts.length || ri < visualReports.length) {
-    if (ti < texts.length) {
-      items.push({ type: "text", block: texts[ti], key: texts[ti]._key });
-      ti++;
-    }
-    if (ri < visualReports.length) {
-      items.push({ type: "report", report: visualReports[ri], key: `r-${visualReports[ri].id}` });
-      ri++;
-    }
-  }
-
   /* Demo animation data — use best pipeline report or fallback */
   const demoReport = reports.find((r) => r.results?.renovation_visualisation?.exteriors?.length);
   const demoImage = demoReport?.results?.renovation_visualisation?.exteriors?.[0]?.originalUrl ?? "/House_1/slot4.jpg";
@@ -237,42 +213,14 @@ export default function HomePage() {
         </div>
 
         {/* ────────────────────────────────────────────────────────────
-            ZONE 3 — REAL REPORTS (evidence, not widgets)
-            Text breaks interleaved with report cards.
+            ZONE 3 — CONFRONTATION TEXT
             ──────────────────────────────────────────────────────────── */}
-        {items.length > 0 && (
-          <div style={{ padding: "clamp(40px,6vh,64px) 0" }}>
-            <div style={{ maxWidth: 900, margin: "0 auto", borderTop: `1px solid ${C.bd}` }} />
-
-            {/* Activity feed header */}
-            <div style={{ textAlign: "center", paddingTop: "clamp(32px,5vh,48px)", paddingBottom: "clamp(16px,2vh,24px)", padding: "clamp(32px,5vh,48px) 24px clamp(16px,2vh,24px)" }}>
-              <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: "clamp(13px,1.5vw,15px)", color: C.warmGrey, letterSpacing: "0.12em", opacity: 0.6, marginBottom: 10 }}>RECENT ANALYSES</div>
-              <div style={{ fontFamily: "'EB Garamond',serif", fontSize: "clamp(15px,1.6vw,18px)", fontStyle: "italic", color: C.tertGrey, lineHeight: 1.7, maxWidth: 480, margin: "0 auto" }}>
-                Real Rightmove listings, analysed by Piega users. Click through to see the full report.
-              </div>
-              {visualReports.length > 0 && (
-                <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 11, color: C.warmGrey, opacity: 0.4, marginTop: 10, letterSpacing: "0.04em" }}>
-                  {visualReports.length} {visualReports.length === 1 ? "report" : "reports"}
-                </div>
-              )}
-            </div>
-
-            <div style={{
-              display: "flex", flexDirection: "column",
-              gap: "clamp(48px,8vh,80px)",
-            }}>
-              {items.map((item) =>
-                item.type === "report"
-                  ? <ReportCard key={item.key} report={item.report} />
-                  : <TextBreak key={item.key} block={item.block} />
-              )}
-            </div>
-          </div>
-        )}
+        <div style={{ padding: "clamp(40px,6vh,64px) 24px clamp(32px,4vh,48px)", borderTop: `1px solid ${C.bd}` }}>
+          <TextBreak block={TEXT_BLOCKS[0]} />
+        </div>
 
         {/* ────────────────────────────────────────────────────────────
-            ZONE 4 — SPLIT: sticky CTA left + image mosaic right
-            (falls back to stacked centred CTA when no grid tiles)
+            ZONE 4 — SPLIT: CTA left + slider cards right
             ──────────────────────────────────────────────────────────── */}
         <div style={{ borderTop: `1px solid ${C.bd}` }}>
           {hasGrid ? (
@@ -354,7 +302,7 @@ export default function HomePage() {
                 </p>
               </div>
 
-              {/* Right — enriched report card grid */}
+              {/* Right — slider card grid */}
               <div className="piega-split-grid-wrap">
                 {/* Freshness line */}
                 {(() => {
@@ -377,7 +325,7 @@ export default function HomePage() {
               </div>
             </div>
           ) : (
-            /* Fallback: centred CTA (no grid tiles available) */
+            /* Fallback: centred CTA */
             <div style={{ padding: "clamp(32px,5vh,56px) 24px", textAlign: "center" }}>
               <div style={{ maxWidth: 540, margin: "0 auto" }}>
                 <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(22px,4vw,30px)", fontWeight: 700, color: C.paper, margin: "0 0 12px" }}>
@@ -403,9 +351,6 @@ export default function HomePage() {
                 <div className="piega-mobile-only" style={{ marginBottom: 20 }}>
                   <p style={{ fontFamily: "'EB Garamond',serif", fontSize: 15, color: C.tertGrey, lineHeight: 1.7, margin: "0 0 6px" }}>
                     Chrome extension {"\u00B7"} Desktop only.
-                  </p>
-                  <p style={{ fontFamily: "'EB Garamond',serif", fontSize: 15, color: C.paper, margin: "0 0 16px" }}>
-                    Send yourself the link and try it tonight.
                   </p>
                 </div>
                 <div className="piega-desktop-only" style={{ fontFamily: "'Inter',sans-serif", fontSize: 11, color: C.warmGrey, opacity: 0.5, margin: "0 0 16px" }}>{"\u2014 or \u2014"}</div>
@@ -456,15 +401,79 @@ export default function HomePage() {
         </div>
 
         {/* ────────────────────────────────────────────────────────────
+            ZONE 5 — EDITORIAL BEATS (two remaining text breaks)
+            ──────────────────────────────────────────────────────────── */}
+        <div style={{ padding: "clamp(40px,6vh,56px) 24px", display: "flex", flexDirection: "column", gap: "clamp(40px,6vh,56px)", borderTop: `1px solid ${C.bd}` }}>
+          <TextBreak block={TEXT_BLOCKS[1]} />
+          <TextBreak block={TEXT_BLOCKS[2]} />
+        </div>
+
+        {/* ────────────────────────────────────────────────────────────
             FOOTER
             ──────────────────────────────────────────────────────────── */}
-        <footer style={{ padding: "28px 24px 24px", textAlign: "center", borderTop: `1px solid ${C.bd}` }}>
-          <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 16, fontStyle: "italic", color: C.accent, marginBottom: 6 }}>Piega.</div>
-          <div style={{ fontFamily: "'EB Garamond',serif", fontSize: 12, color: C.warmGrey, marginBottom: 3 }}>
-            {"Property intelligence \u00B7 United Kingdom"}
-          </div>
-          <div style={{ fontFamily: "'EB Garamond',serif", fontSize: 12, color: C.warmGrey, opacity: 0.5 }}>
-            Not affiliated with any estate agent. That is the point.
+        <footer style={{ borderTop: `1px solid ${C.bd}`, padding: "clamp(32px,5vh,48px) 24px clamp(24px,3vh,32px)", textAlign: "center" }}>
+          <div style={{ maxWidth: 480, margin: "0 auto" }}>
+            {/* Wordmark */}
+            <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 22, fontStyle: "italic", color: C.accent, marginBottom: 12 }}>Piega.</div>
+
+            {/* One-line promise */}
+            <p style={{ fontFamily: "'EB Garamond',serif", fontSize: "clamp(14px,1.4vw,16px)", color: C.tertGrey, lineHeight: 1.7, margin: "0 0 20px" }}>
+              Classification. Renovation vision. Cost estimate. Narrative.{"\n"}One Rightmove link, 90 seconds, the full reading.
+            </p>
+
+            {/* Secondary CTA — email for those who scrolled past the main one */}
+            {!done && (
+              <div style={{ maxWidth: 340, margin: "0 auto 20px" }}>
+                <div style={{ display: "flex", gap: 0 }}>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && submitEmail()}
+                    placeholder="your@email.com"
+                    style={{
+                      flex: 1, padding: "9px 12px", border: `1px solid ${formError ? C.terracotta : C.bd}`,
+                      borderRight: "none", borderRadius: "4px 0 0 4px",
+                      background: C.darkMid, color: C.paper,
+                      fontFamily: "'EB Garamond',serif", fontSize: 14,
+                      outline: "none", transition: "border-color 0.3s",
+                    }}
+                  />
+                  <button
+                    onClick={submitEmail}
+                    disabled={submitting}
+                    style={{
+                      padding: "9px 14px", border: "none", borderRadius: "0 4px 4px 0",
+                      background: C.terracotta, color: C.paper, cursor: "pointer",
+                      fontFamily: "'Bebas Neue',sans-serif", fontSize: 12, letterSpacing: "0.1em",
+                      opacity: submitting ? 0.5 : 1, transition: "opacity 0.2s",
+                    }}
+                  >
+                    NOTIFY ME
+                  </button>
+                </div>
+              </div>
+            )}
+            {done && (
+              <div style={{ marginBottom: 20 }}>
+                <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 22, color: C.terracotta, letterSpacing: "0.04em" }}>DONE.</span>
+                <span style={{ fontFamily: "'EB Garamond',serif", fontSize: 13, color: C.tertGrey, marginLeft: 8 }}>{"We\u2019ll be in touch."}</span>
+              </div>
+            )}
+
+            {/* Links */}
+            <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 11, color: C.warmGrey, letterSpacing: "0.04em", marginBottom: 16 }}>
+              <a href="/pipeline" style={{ color: C.accent, textDecoration: "none", opacity: 0.7 }}>Pipeline Hub</a>
+              <span style={{ opacity: 0.3, margin: "0 10px" }}>{"\u00B7"}</span>
+              <a href="#chrome-store" className="piega-desktop-only" style={{ color: C.accent, textDecoration: "none", opacity: 0.7 }}>Add to Chrome</a>
+            </div>
+
+            {/* Legal line */}
+            <div style={{ fontFamily: "'EB Garamond',serif", fontSize: 12, color: C.warmGrey, opacity: 0.4, lineHeight: 1.7 }}>
+              {"Property intelligence \u00B7 United Kingdom"}
+              <br />
+              Not affiliated with any estate agent. That is the point.
+            </div>
           </div>
         </footer>
 

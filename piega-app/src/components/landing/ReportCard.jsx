@@ -4,6 +4,19 @@ import Link from "next/link";
 import { C } from "@/lib/theme";
 import { useReveal } from "./hooks";
 
+function formatTimeAgo(iso) {
+  if (!iso) return null;
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return `Analysed ${mins < 2 ? "just now" : `${mins}m ago`}`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `Analysed ${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days === 1) return "Analysed yesterday";
+  if (days < 30) return `Analysed ${days} days ago`;
+  return `Analysed ${Math.floor(days / 30)} months ago`;
+}
+
 export default function ReportCard({ report }) {
   const [ref, visible] = useReveal();
   const listing = report.listing ?? {};
@@ -19,6 +32,9 @@ export default function ReportCard({ report }) {
   const era = archetype?.era ?? "";
   const price = listing.askingPrice
     ? `\u00A3${Math.round(listing.askingPrice / 1000)}K` : "";
+
+  /* Relative time */
+  const timeAgo = formatTimeAgo(report.created_at);
 
   /* Best visual for slider — prefer exterior, fall back to interior */
   const best = vis?.exteriors?.[0] ?? vis?.interiors?.[0];
@@ -55,6 +71,15 @@ export default function ReportCard({ report }) {
     >
       {/* Property header */}
       <div style={{ marginBottom: 14 }}>
+        {timeAgo && (
+          <div style={{
+            fontFamily: "'Inter',sans-serif", fontSize: 11,
+            color: C.warmGrey, opacity: 0.6, letterSpacing: "0.04em",
+            marginBottom: 8,
+          }}>
+            {timeAgo}
+          </div>
+        )}
         <div style={{
           fontFamily: "'Playfair Display',serif",
           fontSize: "clamp(22px,3.5vw,30px)",

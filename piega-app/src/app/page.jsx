@@ -71,18 +71,13 @@ export default function HomePage() {
     })();
   }, []);
 
-  /* Reports with visuals, sorted by completeness */
+  /* Reports with visuals, sorted by recency */
   const visualReports = reports
     .filter((r) =>
       r.results?.renovation_visualisation?.exteriors?.length ||
       r.results?.renovation_visualisation?.interiors?.length
     )
-    .sort((a, b) => {
-      const score = (r) =>
-        (r.results?.cost_estimate ? 2 : 0) +
-        (r.results?.narrative ? 1 : 0);
-      return score(b) - score(a);
-    });
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
   /* Interleave: TEXT → REPORT → TEXT → REPORT → ... */
   const items = [];
@@ -175,10 +170,23 @@ export default function HomePage() {
         {items.length > 0 && (
           <div style={{ padding: "clamp(40px,6vh,64px) 0" }}>
             <div style={{ maxWidth: 900, margin: "0 auto", borderTop: `1px solid ${C.bd}` }} />
+
+            {/* Activity feed header */}
+            <div style={{ textAlign: "center", paddingTop: "clamp(32px,5vh,48px)", paddingBottom: "clamp(16px,2vh,24px)", padding: "clamp(32px,5vh,48px) 24px clamp(16px,2vh,24px)" }}>
+              <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: "clamp(13px,1.5vw,15px)", color: C.warmGrey, letterSpacing: "0.12em", opacity: 0.6, marginBottom: 10 }}>RECENT ANALYSES</div>
+              <div style={{ fontFamily: "'EB Garamond',serif", fontSize: "clamp(15px,1.6vw,18px)", fontStyle: "italic", color: C.tertGrey, lineHeight: 1.7, maxWidth: 480, margin: "0 auto" }}>
+                Real Rightmove listings, analysed by Piega users. Click through to see the full report.
+              </div>
+              {visualReports.length > 0 && (
+                <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 11, color: C.warmGrey, opacity: 0.4, marginTop: 10, letterSpacing: "0.04em" }}>
+                  {visualReports.length} {visualReports.length === 1 ? "report" : "reports"}
+                </div>
+              )}
+            </div>
+
             <div style={{
               display: "flex", flexDirection: "column",
               gap: "clamp(48px,8vh,80px)",
-              paddingTop: "clamp(48px,8vh,80px)",
             }}>
               {items.map((item) =>
                 item.type === "report"

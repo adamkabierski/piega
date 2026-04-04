@@ -166,7 +166,7 @@ export default function DemoAnimation({ demoImage, demoAfterImage, demoInteriorI
         ref={containerRef}
         style={{
           maxWidth: 900, margin: "0 auto", borderRadius: 8, overflow: "hidden",
-          position: "relative", aspectRatio: "16/9", minHeight: 320,
+          position: "relative", aspectRatio: "16/9", minHeight: 240,
           background: C.darkCard,
           border: `1px solid ${C.bd}`,
           boxShadow: `0 4px 32px rgba(0,0,0,0.3), 0 0 0 1px ${C.bd}`,
@@ -258,7 +258,8 @@ export default function DemoAnimation({ demoImage, demoAfterImage, demoInteriorI
                   cursor: "pointer", transition: "all 0.3s",
                   boxShadow: phase === i ? `0 0 8px ${C.accent}50` : "none",
                 }}
-              />
+                // Invisible padding for touch target
+              ><div style={{ position: "absolute", inset: -18 }} /></div>
             ))}
           </div>
         </div>

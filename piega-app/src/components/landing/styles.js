@@ -254,6 +254,9 @@ export const STYLES = `
       grid-template-columns: 1fr;
       max-height: none;
     }
+    .piega-split::after {
+      width: 100%;
+    }
     .piega-split-cta {
       position: static;
       padding: 40px 24px;

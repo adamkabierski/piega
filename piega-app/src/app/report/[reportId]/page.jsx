@@ -271,31 +271,25 @@ function CostStackedBar({ breakdown }) {
           );
         })}
       </div>
-      {/* Labels beneath */}
-      <div style={{ display: "flex", marginTop: 9 }}>
-        {breakdown.map((b, i) => {
-          const flex = totals[i] / sum;
-          return (
-            <div key={i} style={{
-              flex, paddingRight: 10, minWidth: 0, overflow: "hidden",
+      {/* Legend beneath — wrapping grid for mobile */}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 14px", marginTop: 12 }}>
+        {breakdown.map((b, i) => (
+          <div key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <div style={{
+              width: 10, height: 10, borderRadius: 2, flexShrink: 0,
+              background: BUDGET_COLOURS[i % BUDGET_COLOURS.length],
+            }} />
+            <div style={{
+              fontFamily: "'Inter', sans-serif", fontSize: 11,
+              color: R.text, lineHeight: 1.3, whiteSpace: "nowrap",
             }}>
-              <div style={{
-                fontFamily: "'Bebas Neue', sans-serif", fontSize: 13,
-                letterSpacing: "0.08em", color: R.text,
-                lineHeight: 1.2, whiteSpace: "nowrap",
-                overflow: "hidden", textOverflow: "ellipsis",
-              }}>
-                {b.category}
-              </div>
-              <div style={{
-                fontFamily: "'EB Garamond', serif", fontSize: 11,
-                color: R.textMuted, lineHeight: 1.4,
-              }}>
+              {b.category}
+              <span style={{ color: R.textMuted, marginLeft: 4 }}>
                 £{Math.round(b.low / 1000)}k–£{Math.round(b.high / 1000)}k
-              </div>
+              </span>
             </div>
-          );
-        })}
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -310,10 +304,10 @@ function PriceGapVisual({ priceGap }) {
 
   return (
     <div style={{
-      display: "grid", gridTemplateColumns: "1fr auto 1fr",
-      alignItems: "center", gap: 16, padding: "24px 0",
+      display: "flex", flexWrap: "wrap",
+      alignItems: "center", justifyContent: "center", gap: "8px 16px", padding: "24px 0",
     }}>
-      <div style={{ textAlign: "center" }}>
+      <div style={{ textAlign: "center", minWidth: 100 }}>
         <div style={{
           fontSize: 10, letterSpacing: 1.5, textTransform: "uppercase",
           color: R.textLight, marginBottom: 6,
@@ -322,13 +316,13 @@ function PriceGapVisual({ priceGap }) {
         </div>
         <div style={{
           fontFamily: "'Bebas Neue', sans-serif",
-          fontSize: 28, letterSpacing: 1, color: R.text,
+          fontSize: "clamp(22px, 4vw, 28px)", letterSpacing: 1, color: R.text,
         }}>
           {fmtK(askingPrice)}
         </div>
       </div>
       <div style={{ fontSize: 20, color: R.textLight }}>→</div>
-      <div style={{ textAlign: "center" }}>
+      <div style={{ textAlign: "center", minWidth: 100 }}>
         <div style={{
           fontSize: 10, letterSpacing: 1.5, textTransform: "uppercase",
           color: R.textLight, marginBottom: 6,
@@ -337,7 +331,7 @@ function PriceGapVisual({ priceGap }) {
         </div>
         <div style={{
           fontFamily: "'Bebas Neue', sans-serif",
-          fontSize: 28, letterSpacing: 1, color: R.sage,
+          fontSize: "clamp(22px, 4vw, 28px)", letterSpacing: 1, color: R.sage,
         }}>
           {fmtK(estimatedPostWorksValue.low)}–{fmtK(estimatedPostWorksValue.high)}
         </div>
@@ -439,7 +433,9 @@ function BeforeAfterSlider({ beforeSrc, afterSrc, label }) {
           aspectRatio: "16/9", borderRadius: 4,
           overflow: "hidden", cursor: "ew-resize", userSelect: "none",
         }}
+        onMouseDown={(e) => { e.preventDefault(); handle(e.clientX); }}
         onMouseMove={(e) => e.buttons === 1 && handle(e.clientX)}
+        onTouchStart={(e) => handle(e.touches[0].clientX)}
         onTouchMove={(e) => handle(e.touches[0].clientX)}
       >
         {/* Base layer = AFTER (renovated) — visible on the right */}
@@ -510,7 +506,7 @@ function ConditionIndicators({ constructionInferences }) {
 
   if (!items.length) return null;
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px 20px" }}>
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(220px, 100%), 1fr))", gap: "8px 20px" }}>
       {items.map((item, i) => (
         <div key={i} style={{
           padding: "10px 14px", borderRadius: 4,

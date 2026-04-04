@@ -107,7 +107,7 @@ export function PhaseExtension({ panelBase, hidden, name, demoImage }) {
         </div>
         <div style={{
           position: "absolute", top: 8, right: "clamp(12px,2.5vw,24px)",
-          width: "clamp(200px,42%,260px)", background: C.dark,
+          width: "clamp(160px,42%,260px)", background: C.dark,
           border: `1px solid ${C.bd}`, borderRadius: 8,
           padding: "clamp(12px,2vw,18px)",
           boxShadow: "0 12px 40px rgba(0,0,0,0.5)",

@@ -59,6 +59,18 @@ export const STYLES = `
     min-height: 600px;
     max-height: 800px;
     overflow: hidden;
+    position: relative;
+  }
+  .piega-split::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: calc(100% - 340px);
+    height: 180px;
+    background: linear-gradient(to bottom, transparent, ${C.dark});
+    pointer-events: none;
+    z-index: 2;
   }
   .piega-split-cta {
     position: sticky;

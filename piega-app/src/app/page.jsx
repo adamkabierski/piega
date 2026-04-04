@@ -304,7 +304,7 @@ export default function HomePage() {
 
               {/* Right — slider card grid */}
               <div className="piega-split-grid-wrap">
-                {/* Freshness line */}
+                {/* Activity header */}
                 {(() => {
                   const dates = gridCards.map(c => c.createdAt).filter(Boolean).map(d => new Date(d));
                   if (!dates.length) return null;
@@ -312,8 +312,13 @@ export default function HomePage() {
                   const oldest = Math.min(...dates);
                   const spanDays = Math.max(1, Math.round((newest - oldest) / 86400000));
                   return (
-                    <div style={{ padding: "0 0 10px", fontFamily: "'Inter',sans-serif", fontSize: 10, color: C.warmGrey, opacity: 0.6, letterSpacing: "0.02em" }}>
-                      {gridCards.length} {gridCards.length === 1 ? "report" : "reports"} {"\u00B7"} generated in the last {spanDays} {spanDays === 1 ? "day" : "days"} by Piega users
+                    <div style={{ padding: "0 0 14px", display: "flex", alignItems: "baseline", gap: 8 }}>
+                      <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 14, color: C.terracotta, letterSpacing: "0.08em" }}>
+                        {gridCards.length} REPORTS
+                      </span>
+                      <span style={{ fontFamily: "'EB Garamond',serif", fontSize: 13, fontStyle: "italic", color: C.warmGrey }}>
+                        {spanDays <= 1 ? "from today" : `from the last ${spanDays} days`}
+                      </span>
                     </div>
                   );
                 })()}

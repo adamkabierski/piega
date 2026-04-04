@@ -29,9 +29,9 @@ function TextBreak({ block }) {
   if (block.variant === "time") {
     return (
       <div style={base}>
-        <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: "clamp(40px,7vw,64px)", color: C.paper, letterSpacing: "0.02em", lineHeight: 1 }}>{block.number}</div>
+        <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: "clamp(24px,4.5vw,40px)", color: C.paper, letterSpacing: "0.02em", lineHeight: 1.15 }}>{block.number}</div>
         {block.lines.map((line, i) => (
-          <div key={i} style={{ fontFamily: "'EB Garamond',serif", fontSize: 16, fontStyle: "italic", color: C.tertGrey, lineHeight: 1.6, marginTop: i === 0 ? 10 : 0 }}>{line}</div>
+          <div key={i} style={{ fontFamily: "'EB Garamond',serif", fontSize: 16, fontStyle: "italic", color: C.tertGrey, lineHeight: 1.6, marginTop: i === 0 ? 12 : 0 }}>{line}</div>
         ))}
       </div>
     );
@@ -146,7 +146,7 @@ export default function HomePage() {
               We tell you the building.
             </div>
             <p style={{ fontFamily: "'EB Garamond',serif", fontSize: "clamp(15px,1.6vw,18px)", color: C.tertGrey, lineHeight: 1.7, margin: "0 auto 12px", maxWidth: 520 }}>
-              A Chrome extension that reads any Rightmove listing and gives you the full picture: architectural reading, renovation concept, and cost estimate {"\u2014"} in 90 seconds.
+              Paste any Rightmove link. In 90 seconds, know whether the building behind those photos is worth your time {"\u2014"} what it needs, what it costs, and what it could become.
             </p>
             <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: C.warmGrey, letterSpacing: "0.04em", lineHeight: 1.8 }}>
               {"Install \u00B7 Browse Rightmove \u00B7 Click \u201CAnalyse\u201D \u00B7 Full report in 90 seconds"}

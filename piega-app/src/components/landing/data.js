@@ -114,17 +114,17 @@ export function reportToBlocks(report) {
 
 export const TEXT_BLOCKS = [
   {
-    _key: "tb-cost", variant: "confrontation",
-    lines: ["AN ARCHITECT CHARGES \u00A32,000.", "A SURVEYOR \u00A3500.", "A DESIGNER \u00A33,000."],
-    punchline: "We did all three.\nFrom a Rightmove link.",
+    _key: "tb-scroll", variant: "confrontation",
+    lines: ["EVERY SCROLL PAST A BAD PHOTO", "IS A BET THAT THE BUILDING BEHIND IT", "ISN\u2019T WORTH \u00A3150K MORE THAN IT LOOKS."],
+    punchline: "Most people see dated kitchens and keep scrolling.\nWe see construction era, renovation scope, and a number.",
   },
   {
-    _key: "tb-time", variant: "time",
-    number: "90 SECONDS.",
-    lines: ["From listing to renovation concept.", "Including the cost estimate", "your builder won\u2019t give you."],
+    _key: "tb-modernisation", variant: "time",
+    number: "\u201CIN NEED OF MODERNISATION.\u201D",
+    lines: ["The estate agent\u2019s way of saying: we don\u2019t know either.", "Piega reads the building \u2014 era, construction, condition \u2014", "and tells you what modernisation actually costs."],
   },
   {
-    _key: "tb-hook", variant: "hook",
-    text: "\u201CThe estate agent calls it \u2018characterful.\u2019\nThe surveyor would call it \u2018structural movement.\u2019\nWe call it Thursday.\u201D",
+    _key: "tb-surveyor", variant: "hook",
+    text: "A surveyor costs \u00A3500. A viewing costs a Saturday.\nPiega doesn\u2019t replace either \u2014 it tells you which\nproperties are worth spending both on.",
   },
 ];

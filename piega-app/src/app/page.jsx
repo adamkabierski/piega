@@ -1,200 +1,488 @@
 "use client";
-import { useState } from "react";
-import Link from "next/link";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { C } from "@/lib/theme";
+import { AGENTS_URL } from "@/lib/config";
+import { STYLES } from "@/components/landing/styles";
+import { TEXT_BLOCKS, reportsToGridCards } from "@/components/landing/data";
+import DemoAnimation from "@/components/landing/DemoAnimation";
 
-const WoodburyCardSVG = () => (
-  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 200" style={{ width: "100%", display: "block", aspectRatio: "2.2/1", opacity: 0.85 }}>
-    <defs>
-      <linearGradient id="cg" x1="0" y1="1" x2="0" y2="0">
-        <stop offset="0" stopColor="#141210" />
-        <stop offset="1" stopColor="#1A1816" />
-      </linearGradient>
-    </defs>
-    <rect fill="url(#cg)" width="440" height="200" />
-    <path d="M0,140 Q110,133 220,122 Q330,108 440,100" stroke={C.sage} strokeOpacity=".12" strokeWidth="1.5" fill="none" />
-    <path d="M0,143 Q110,136 220,125 Q330,111 440,103 L440,200 L0,200 Z" fill={C.sage} fillOpacity=".015" />
-    <rect x="155" y="72" width="130" height="42" fill="none" stroke={C.paper} strokeOpacity=".14" strokeWidth="1.2" />
-    <path d="M155,72 L220,52 L285,72" fill="none" stroke={C.paper} strokeOpacity=".14" strokeWidth="1.2" />
-    <rect x="132" y="114" width="60" height="28" fill="none" stroke={C.terracotta} strokeOpacity=".08" strokeWidth="1" strokeDasharray="3,2" />
-    <line x1="137" y1="142" x2="187" y2="142" stroke={C.sage} strokeOpacity=".2" strokeWidth="1.5" />
-    <text x="220" y="178" textAnchor="middle" fontFamily="Inter,sans-serif" fontSize="6.5" fill={C.warmGrey} fillOpacity=".25">147m elevation · split-level · the house steps down the hillside</text>
-    <rect x="305" y="82" width="50" height="32" fill="none" stroke={C.warmGrey} strokeOpacity=".05" strokeWidth="1" />
-    <path d="M305,82 L330,72 L355,82" fill="none" stroke={C.warmGrey} strokeOpacity=".05" strokeWidth="1" />
-    <line x1="220" y1="46" x2="220" y2="36" stroke={C.terracotta} strokeOpacity=".2" strokeWidth=".8" />
-    <text x="220" y="33" textAnchor="middle" fontFamily="serif" fontSize="7.5" fill={C.terracotta} fillOpacity=".5" fontStyle="italic">Woodbury</text>
-  </svg>
-);
+/* ---------- Mini slider card (grid) ---------- */
 
-const StatStrip = ({ stats }) => (
-  <div style={{ display: "flex", borderTop: `1px solid ${C.bd}`, borderBottom: `1px solid ${C.bd}`, margin: "0 -20px", padding: "0 20px" }}>
-    {stats.map((s, i) => (
-      <div key={i} style={{ flex: 1, padding: "9px 0 9px 6px", borderRight: i < stats.length - 1 ? `1px solid ${C.bd}` : "none" }}>
-        <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: "14px", letterSpacing: "0.05em", color: s.c || C.paper }}>{s.v}</div>
-        <div style={{ fontFamily: "'EB Garamond',serif", fontSize: "7px", letterSpacing: "0.18em", textTransform: "uppercase", color: C.warmGrey, opacity: 0.45 }}>{s.l}</div>
+function MiniSliderCard({ card }) {
+  const [split, setSplit] = useState(50);
+  const sliderRef = useRef(null);
+  const dragging = useRef(false);
+
+  const move = useCallback((clientX) => {
+    const el = sliderRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    setSplit(Math.max(5, Math.min(95, ((clientX - rect.left) / rect.width) * 100)));
+  }, []);
+
+  useEffect(() => {
+    const up = () => { dragging.current = false; };
+    const mv = (e) => { if (dragging.current) move(e.touches ? e.touches[0].clientX : e.clientX); };
+    window.addEventListener("mouseup", up);
+    window.addEventListener("mousemove", mv);
+    window.addEventListener("touchend", up);
+    window.addEventListener("touchmove", mv, { passive: true });
+    return () => {
+      window.removeEventListener("mouseup", up);
+      window.removeEventListener("mousemove", mv);
+      window.removeEventListener("touchend", up);
+      window.removeEventListener("touchmove", mv);
+    };
+  }, [move]);
+
+  const archLine = [card.era, card.archetypeLabel].filter(Boolean).join(" \u00B7 ");
+
+  return (
+    <div className="piega-prop-card">
+      {/* Slider */}
+      <div
+        ref={sliderRef}
+        className="piega-card-slider"
+        onMouseDown={(e) => { e.preventDefault(); dragging.current = true; move(e.clientX); }}
+        onTouchStart={(e) => { dragging.current = true; move(e.touches[0].clientX); }}
+      >
+        <img src={card.originalUrl} alt="" loading="lazy" style={{ zIndex: 1 }} onError={(e) => { e.target.style.display = "none"; }} />
+        <img src={card.renovatedUrl} alt="" loading="lazy" style={{ zIndex: 2, clipPath: `inset(0 0 0 ${split}%)` }} onError={(e) => { e.target.style.display = "none"; }} />
+        <div className="piega-card-slider-handle" style={{ left: `${split}%` }} />
+        {/* Labels */}
+        <span className="piega-card-lbl piega-card-lbl-now">NOW</span>
+        <span className="piega-card-lbl piega-card-lbl-poss">POSSIBLE</span>
+        <span className="piega-card-badge">{card.label.toUpperCase()}</span>
       </div>
-    ))}
-  </div>
-);
+      {/* Meta */}
+      <a href={card.reportId ? `/report/${card.reportId}` : undefined} style={{ textDecoration: "none", display: "block" }}>
+        <div className="piega-card-meta">
+          <p className="piega-card-name">{card.name}</p>
+          {archLine && <p className="piega-card-arch">{archLine}</p>}
+        </div>
+        {card.costStr && (
+          <div className="piega-card-cost">
+            <span className="piega-card-cost-label">Est. renovation</span>
+            <span className="piega-card-cost-num">{card.costStr}</span>
+          </div>
+        )}
+        {card.observation && (
+          <p className="piega-card-observation">{`\u201C${card.observation}\u201D`}</p>
+        )}
+        <span className="piega-card-foot">{`View full report \u2192`}</span>
+      </a>
+    </div>
+  );
+}
+
+/* ---------- Editorial text break (between report cards) ---------- */
+
+function TextBreak({ block }) {
+  const base = {
+    maxWidth: 520, margin: "0 auto", padding: "0 24px",
+    textAlign: "center",
+  };
+
+  if (block.variant === "confrontation") {
+    return (
+      <div style={base}>
+        {block.lines.map((line, i) => (
+          <div key={i} style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: "clamp(14px,1.8vw,17px)", color: C.paper, opacity: 0.35, letterSpacing: "0.04em", lineHeight: 1.6 }}>{line}</div>
+        ))}
+        <div style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(16px,2vw,20px)", fontStyle: "italic", color: C.terracotta, marginTop: 14, lineHeight: 1.5, whiteSpace: "pre-line" }}>{block.punchline}</div>
+      </div>
+    );
+  }
+
+  if (block.variant === "time") {
+    return (
+      <div style={base}>
+        <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: "clamp(24px,4.5vw,40px)", color: C.paper, letterSpacing: "0.02em", lineHeight: 1.15 }}>{block.number}</div>
+        {block.lines.map((line, i) => (
+          <div key={i} style={{ fontFamily: "'EB Garamond',serif", fontSize: 16, fontStyle: "italic", color: C.tertGrey, lineHeight: 1.6, marginTop: i === 0 ? 12 : 0 }}>{line}</div>
+        ))}
+      </div>
+    );
+  }
+
+  if (block.variant === "hook") {
+    return (
+      <div style={{ ...base, maxWidth: 560, textAlign: "left" }}>
+        <div style={{
+          fontFamily: "'Playfair Display',serif", fontSize: "clamp(16px,2vw,19px)",
+          fontStyle: "italic", color: C.paper, opacity: 0.8,
+          lineHeight: 1.7, whiteSpace: "pre-line",
+          borderLeft: `3px solid ${C.terracotta}`,
+          paddingLeft: 20,
+        }}>{block.text}</div>
+      </div>
+    );
+  }
+
+  return null;
+}
 
 export default function HomePage() {
   const [email, setEmail] = useState("");
   const [done, setDone] = useState(false);
-  const [error, setError] = useState(false);
+  const [formError, setFormError] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [reports, setReports] = useState([]);
 
-  function go() {
-    if (!email || !email.includes("@")) { setError(true); setTimeout(() => setError(false), 1400); return; }
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch(`${AGENTS_URL}/reports`);
+        if (!res.ok) return;
+        setReports(await res.json());
+      } catch {}
+    })();
+  }, []);
+
+  /* Demo animation data — use best pipeline report or fallback */
+  const demoReport = reports.find((r) => r.results?.renovation_visualisation?.exteriors?.length);
+  const demoImage = demoReport?.results?.renovation_visualisation?.exteriors?.[0]?.originalUrl ?? "/House_1/slot4.jpg";
+  const demoAfterImage = demoReport?.results?.renovation_visualisation?.exteriors?.[0]?.renovatedUrl ?? "/House_1/slot4.jpg";
+  const demoInteriorImage = demoReport?.results?.renovation_visualisation?.interiors?.[0]?.originalUrl ?? null;
+  const demoInteriorAfterImage = demoReport?.results?.renovation_visualisation?.interiors?.[0]?.renovatedUrl ?? null;
+  const demoEnv = demoReport?.results?.cost_estimate?.totalEnvelope;
+  const demoCost = demoEnv ? `\u00A3${Math.round((demoEnv.low ?? 0) / 1000)}K \u2013 \u00A3${Math.round((demoEnv.high ?? 0) / 1000)}K` : null;
+  const demoName = demoReport?.listing?.address?.split(",")[0]?.trim() ?? null;
+
+  /* Property cards for CTA grid */
+  const gridCards = reportsToGridCards(reports);
+  const hasGrid = gridCards.length >= 4;
+
+  /* Email submit */
+  async function submitEmail() {
+    if (!email || !email.includes("@")) {
+      setFormError(true);
+      setTimeout(() => setFormError(false), 1400);
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await fetch(`${AGENTS_URL}/subscribe`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+    } catch {}
     setDone(true);
+    setSubmitting(false);
   }
 
   return (
-    <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", position: "relative", zIndex: 1 }}>
-      {/* Header */}
-      <header style={{ padding: "28px 40px", display: "flex", alignItems: "center", justifyContent: "space-between", opacity: 0, animation: "arise .8s ease .2s forwards" }}>
-        <div style={{ fontFamily: "'Playfair Display',serif", fontSize: "17px", fontStyle: "italic", color: C.accentDark, letterSpacing: "0.02em" }}>Piega</div>
-        <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-          <Link href="/pipeline" style={{ fontFamily: "'EB Garamond',serif", fontSize: "12px", color: C.accent, textDecoration: "none", letterSpacing: "0.08em", borderBottom: `1px solid ${C.bd}`, paddingBottom: 1, transition: "border-color .3s" }}>Pipeline →</Link>
-          <div style={{ fontFamily: "'EB Garamond',serif", fontSize: "12px", fontStyle: "italic", color: `${C.tertGrey}60` }}>Early access · UK property</div>
-        </div>
-      </header>
+    <>
+      <style>{STYLES}</style>
+      <div className="piega-page">
 
-      {/* Hero */}
-      <div style={{ maxWidth: "760px", margin: "0 auto", padding: "60px 24px 50px", textAlign: "center" }}>
-        <div style={{ fontFamily: "'EB Garamond',serif", fontSize: "10px", letterSpacing: "0.3em", textTransform: "uppercase", color: `${C.accent}60`, marginBottom: "44px", opacity: 0, animation: "arise .9s ease .5s forwards" }}>
-          Property Intelligence · United Kingdom
-        </div>
-        <div style={{ opacity: 0, animation: "arise 1s ease .7s forwards" }}>
-          <h1 style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(32px,6vw,70px)", fontWeight: 700, lineHeight: 1.06, letterSpacing: "-0.02em", color: C.paper, margin: 0 }}>
-            The estate agent<br />told you a story.
-          </h1>
-          <span style={{ display: "block", fontFamily: "'Bebas Neue',sans-serif", fontSize: "clamp(11px,1.4vw,16px)", letterSpacing: "0.26em", color: `${C.tertGrey}45`, margin: "16px 0 20px", opacity: 0, animation: "arise .8s ease .9s forwards" }}>
-            — WE ARE NOT THE ESTATE AGENT —
-          </span>
-          <h1 style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(32px,6vw,70px)", fontWeight: 400, fontStyle: "italic", lineHeight: 1.06, letterSpacing: "-0.02em", color: C.terracotta, margin: 0 }}>
-            We tell you the building.
-          </h1>
-        </div>
-        <p style={{ maxWidth: "460px", margin: "20px auto 0", fontFamily: "'EB Garamond',serif", fontStyle: "italic", fontSize: "clamp(15px,1.8vw,19px)", color: `${C.accent}80`, lineHeight: 1.65, opacity: 0, animation: "arise .9s ease 1.1s forwards" }}>
-          An honest analysis of any UK property — what it is, where it sits, and what it will actually cost you to own. No flattery. No agenda. Just the fold.
-        </p>
-      </div>
-
-      {/* Reports */}
-      <div style={{ maxWidth: "840px", margin: "0 auto", padding: "20px 24px 60px", opacity: 0, animation: "arise 1s ease 1.3s forwards", width: "100%" }}>
-        <div style={{ textAlign: "center", marginBottom: "28px" }}>
-          <span style={{ fontFamily: "'EB Garamond',serif", fontSize: "9px", letterSpacing: "0.28em", textTransform: "uppercase", color: `${C.accent}50` }}>Recent Analyses</span>
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
-          {/* Woodbury */}
-          <Link href="/reports/woodbury" style={{ textDecoration: "none", color: "inherit", display: "flex", flexDirection: "column", background: C.darkCard, border: `1px solid ${C.bd}`, overflow: "hidden", transition: "border-color .4s, transform .4s", cursor: "pointer" }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = C.bdh; e.currentTarget.style.transform = "translateY(-4px)"; }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = C.bd; e.currentTarget.style.transform = "none"; }}>
-            <img src="/House_1/slot4.jpg" alt="Woodbury" style={{ width: "100%", aspectRatio: "2.2/1", objectFit: "cover", display: "block" }} />
-            <div style={{ padding: "16px 20px 20px", flex: 1, display: "flex", flexDirection: "column" }}>
-              <div style={{ fontFamily: "'EB Garamond',serif", fontSize: "8px", letterSpacing: "0.22em", textTransform: "uppercase", color: C.terracotta, opacity: 0.55, marginBottom: "7px" }}>Auction · 18 March 2026</div>
-              <div style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(18px,2.6vw,24px)", fontWeight: 700, lineHeight: 1.1, color: C.paper, marginBottom: "3px" }}>Woodbury</div>
-              <div style={{ fontFamily: "'EB Garamond',serif", fontSize: "11px", color: `${C.tertGrey}75`, letterSpacing: "0.04em", marginBottom: "14px", lineHeight: 1.5 }}>Woodbury Hill Path, Luton, LU2 7JR · 4 bed · Detached · Split-level · Freehold</div>
-              <StatStrip stats={[{ v: "£340K+", l: "Guide", c: C.accentDark }, { v: "109 SQM", l: "Area" }, { v: "25 MIN", l: "London" }, { v: "£126K", l: "Upside" }]} />
-              <div style={{ fontFamily: "'Playfair Display',serif", fontStyle: "italic", fontSize: "12px", lineHeight: 1.6, color: C.accent, margin: "14px 0", paddingLeft: "10px", borderLeft: `2px solid ${C.terracotta}55`, opacity: 0.65, flex: 1 }}>
-                Someone else's unfinished project. Possibly your perfect beginning.
-              </div>
-              <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: "10px", letterSpacing: "0.2em", color: C.accentDark, marginTop: "auto" }}>READ THE FULL ANALYSIS →</div>
+        {/* ────────────────────────────────────────────────────────────
+            ZONE 1 — HERO (compact typographic promise)
+            ──────────────────────────────────────────────────────────── */}
+        <div style={{ padding: "clamp(24px,4vh,40px) 24px clamp(20px,3vh,32px)", textAlign: "center" }}>
+          <div style={{ maxWidth: 680, margin: "0 auto" }}>
+            <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 16, fontStyle: "italic", color: C.accent, marginBottom: "clamp(16px,3vh,28px)" }}>Piega</div>
+            <h1 style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(28px,5vw,48px)", fontWeight: 700, color: C.paper, lineHeight: 1.15, margin: "0 0 6px" }}>
+              The estate agent told you a story.
+            </h1>
+            <div style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(26px,4.5vw,44px)", fontStyle: "italic", color: C.terracotta, lineHeight: 1.2, margin: "8px 0 16px" }}>
+              We tell you the building.
             </div>
-          </Link>
-
-          {/* Cherry Cottage */}
-          <Link href="/reports/cherry-cottage" style={{ textDecoration: "none", color: "inherit", display: "flex", flexDirection: "column", background: C.darkCard, border: `1px solid ${C.bd}`, overflow: "hidden", transition: "border-color .4s, transform .4s", cursor: "pointer" }}
-            onMouseEnter={e => { e.currentTarget.style.borderColor = C.bdh; e.currentTarget.style.transform = "translateY(-4px)"; }}
-            onMouseLeave={e => { e.currentTarget.style.borderColor = C.bd; e.currentTarget.style.transform = "none"; }}>
-            <img src="/House_2/slot1.jpg" alt="Cherry Cottage" style={{ width: "100%", aspectRatio: "2.2/1", objectFit: "cover", display: "block" }} />
-            <div style={{ padding: "16px 20px 20px", flex: 1, display: "flex", flexDirection: "column" }}>
-              <div style={{ fontFamily: "'EB Garamond',serif", fontSize: "8px", letterSpacing: "0.22em", textTransform: "uppercase", color: C.terracotta, opacity: 0.55, marginBottom: "7px" }}>Auction · Digby Hall, Sherborne</div>
-              <div style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(18px,2.6vw,24px)", fontWeight: 700, lineHeight: 1.1, color: C.paper, marginBottom: "3px" }}>Cherry Cottage</div>
-              <div style={{ fontFamily: "'EB Garamond',serif", fontSize: "11px", color: `${C.tertGrey}75`, letterSpacing: "0.04em", marginBottom: "14px", lineHeight: 1.5 }}>Alton Pancras, Dorchester, Dorset, DT2 7RW · 2 bed · Thatched · Grade II Listed</div>
-              <StatStrip stats={[{ v: "£200K", l: "Guide", c: C.accentDark }, { v: "GRADE II", l: "Listed", c: C.terracotta }, { v: "0.2 ACRE", l: "Land" }, { v: "£150K+", l: "Upside" }]} />
-              <div style={{ fontFamily: "'Playfair Display',serif", fontStyle: "italic", fontSize: "12px", lineHeight: 1.6, color: C.accent, margin: "14px 0", paddingLeft: "10px", borderLeft: `2px solid ${C.terracotta}55`, opacity: 0.65, flex: 1 }}>
-                The panelling is Georgian. The damp behind it is older. You are buying both.
-              </div>
-              <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: "10px", letterSpacing: "0.2em", color: C.accentDark, marginTop: "auto" }}>READ THE FULL ANALYSIS →</div>
+            <p style={{ fontFamily: "'EB Garamond',serif", fontSize: "clamp(15px,1.6vw,18px)", color: C.tertGrey, lineHeight: 1.7, margin: "0 auto 12px", maxWidth: 520 }}>
+              Paste any Rightmove link. In 90 seconds, know whether the building behind those photos is worth your time {"\u2014"} what it needs, what it costs, and what it could become.
+            </p>
+            <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: C.warmGrey, letterSpacing: "0.04em", lineHeight: 1.8 }}>
+              {"Install \u00B7 Browse Rightmove \u00B7 Click \u201CAnalyse\u201D \u00B7 Full report in 90 seconds"}
             </div>
-          </Link>
-        </div>
-      </div>
-
-      {/* Divider */}
-      <div style={{ width: "40px", height: "1px", background: C.accentDark, margin: "0 auto", opacity: 0.18 }} />
-
-      {/* Proposition */}
-      <div style={{ maxWidth: "520px", margin: "0 auto", padding: "44px 24px 52px", textAlign: "center", opacity: 0, animation: "arise .9s ease 1.55s forwards" }}>
-        <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(20px,3vw,30px)", fontWeight: 700, color: C.paper, lineHeight: 1.15, marginBottom: "16px" }}>
-          Every property has a <em style={{ fontWeight: 400, fontStyle: "italic", color: C.terracotta }}>piega.</em>
-        </h2>
-        <p style={{ fontFamily: "'EB Garamond',serif", fontStyle: "italic", fontSize: "clamp(14px,1.6vw,17px)", color: `${C.accent}66`, lineHeight: 1.7 }}>
-          A fold. A turning point. The moment it stops being someone else's problem and starts being your project. We find that moment — with architectural reading, honest numbers, and no agenda. If the numbers don't work, we'll tell you to fold.
-        </p>
-      </div>
-
-      <div style={{ width: "40px", height: "1px", background: C.accentDark, margin: "0 auto", opacity: 0.18 }} />
-
-      {/* How it works */}
-      <div style={{ maxWidth: "600px", margin: "0 auto", padding: "40px 24px 56px", opacity: 0, animation: "arise .9s ease 1.7s forwards", width: "100%" }}>
-        <div style={{ textAlign: "center", marginBottom: "20px" }}>
-          <span style={{ fontFamily: "'EB Garamond',serif", fontSize: "9px", letterSpacing: "0.28em", textTransform: "uppercase", color: `${C.accent}44` }}>What you get</span>
-        </div>
-        <div style={{ display: "flex", gap: "6px" }}>
-          {[
-            { n: "01", t: "The Place", d: "Context map, commute analysis, neighbourhood comparables. Where the building sits and what that means for you." },
-            { n: "02", t: "The Building", d: "Room-by-room reading. Floor plans, cross sections, condition matrix. What the photos show and what they hide." },
-            { n: "03", t: "The Number", d: "Total cost envelope — not just the asking price. Remedial budget, scenarios, the gap between guide and done." },
-          ].map((s, i) => (
-            <div key={i} style={{ flex: 1, background: C.darkCard, border: `1px solid ${C.bd}`, padding: "16px 14px" }}>
-              <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: "28px", color: `${C.accent}1F`, marginBottom: "4px", lineHeight: 1 }}>{s.n}</div>
-              <div style={{ fontFamily: "'Playfair Display',serif", fontSize: "13px", fontWeight: 700, color: C.paper, lineHeight: 1.2, marginBottom: "5px" }}>{s.t}</div>
-              <div style={{ fontFamily: "'EB Garamond',serif", fontStyle: "italic", fontSize: "11.5px", color: `${C.tertGrey}60`, lineHeight: 1.5 }}>{s.d}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Email */}
-      <div style={{ maxWidth: "460px", margin: "0 auto", padding: "0 24px 90px", textAlign: "center", opacity: 0, animation: "arise .9s ease 1.85s forwards", width: "100%" }}>
-        <div style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(18px,2.6vw,24px)", fontWeight: 700, color: C.paper, marginBottom: "5px", lineHeight: 1.2 }}>
-          Get the next analysis<br /><em style={{ fontWeight: 400, fontStyle: "italic", color: C.terracotta }}>before anyone else does.</em>
-        </div>
-        <div style={{ fontFamily: "'EB Garamond',serif", fontStyle: "italic", fontSize: "13.5px", color: `${C.accent}66`, marginBottom: "22px", lineHeight: 1.5 }}>
-          One property. Laid bare. No pitch, no weekly newsletter.
-        </div>
-        {!done ? (
-          <>
-            <div style={{ display: "flex", width: "100%" }}>
-              <input
-                type="email" value={email} onChange={e => setEmail(e.target.value)}
-                onKeyDown={e => e.key === "Enter" && go()}
-                placeholder="your@email.com"
-                style={{ flex: 1, background: "rgba(255,255,255,0.035)", border: `1px solid ${error ? C.terracotta : "rgba(184,169,154,0.32)"}`, borderRight: "none", padding: "15px 20px", fontFamily: "'EB Garamond',serif", fontSize: "17px", color: C.paper, outline: "none", transition: "border-color .3s" }}
-              />
-              <button onClick={go} style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: "14px", letterSpacing: "0.18em", color: C.dark, background: C.accent, border: "none", padding: "0 26px", cursor: "pointer", flexShrink: 0 }}>
-                SEND IT
-              </button>
-            </div>
-            <div style={{ marginTop: "11px", fontFamily: "'EB Garamond',serif", fontSize: "11.5px", fontStyle: "italic", color: `${C.tertGrey}4C` }}>
-              Early access. We'll tell you when the next building is ready.
-            </div>
-          </>
-        ) : (
-          <div style={{ padding: "18px 0", animation: "arise .6s ease both" }}>
-            <b style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: "clamp(30px,4.5vw,48px)", letterSpacing: "0.06em", color: C.paper, display: "block" }}>DONE.</b>
-            <span style={{ fontFamily: "'EB Garamond',serif", fontStyle: "italic", fontSize: "15px", color: `${C.accent}80`, marginTop: "5px", display: "block" }}>You'll know when the next one is ready.</span>
           </div>
-        )}
-      </div>
+        </div>
 
-      {/* Footer */}
-      <footer style={{ padding: "22px 40px", display: "flex", alignItems: "center", justifyContent: "center", borderTop: `1px solid ${C.bd}`, opacity: 0, animation: "arise .8s ease 2s forwards", marginTop: "auto" }}>
-        <p style={{ fontFamily: "'EB Garamond',serif", fontSize: "11px", fontStyle: "italic", color: `${C.tertGrey}40`, margin: 0 }}>
-          <strong style={{ fontStyle: "normal", fontWeight: 500, color: `${C.tertGrey}60` }}>Piega</strong> is in private development. Not affiliated with any estate agent. That is the point.
-        </p>
-      </footer>
-    </div>
+        {/* ────────────────────────────────────────────────────────────
+            ZONE 2 — DEMO ANIMATION (how it works)
+            ──────────────────────────────────────────────────────────── */}
+        <div style={{ padding: "clamp(20px,3vw,40px) 24px" }}>
+          <DemoAnimation
+            demoImage={demoImage}
+            demoAfterImage={demoAfterImage}
+            demoInteriorImage={demoInteriorImage}
+            demoInteriorAfterImage={demoInteriorAfterImage}
+            demoCost={demoCost}
+            demoName={demoName}
+          />
+        </div>
+
+        {/* ────────────────────────────────────────────────────────────
+            ZONE 3 — CONFRONTATION TEXT
+            ──────────────────────────────────────────────────────────── */}
+        <div style={{ padding: "clamp(40px,6vh,64px) 24px clamp(32px,4vh,48px)", borderTop: `1px solid ${C.bd}` }}>
+          <TextBreak block={TEXT_BLOCKS[0]} />
+        </div>
+
+        {/* ────────────────────────────────────────────────────────────
+            ZONE 4 — SPLIT: CTA left + slider cards right
+            ──────────────────────────────────────────────────────────── */}
+        <div style={{ borderTop: `1px solid ${C.bd}` }}>
+          {hasGrid ? (
+            <div className="piega-split">
+              {/* Left — sticky CTA */}
+              <div className="piega-split-cta">
+                <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(22px,3vw,28px)", fontWeight: 700, color: C.paper, margin: "0 0 12px", textAlign: "left" }}>
+                  See what your building is hiding.
+                </h2>
+                <p style={{ fontFamily: "'EB Garamond',serif", fontSize: "clamp(14px,1.4vw,16px)", color: C.tertGrey, lineHeight: 1.7, margin: "0 0 24px", textAlign: "left" }}>
+                  {"Piega lives on Rightmove. Install the extension. Browse any listing. Click once. The full reading arrives before you\u2019ve finished your tea."}
+                </p>
+
+                {/* Chrome extension card */}
+                <div className="piega-desktop-only" style={{ background: C.darkMid, border: `1px solid ${C.bd}`, borderRadius: 8, padding: "16px 20px", marginBottom: 14 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
+                    <div style={{ width: 36, height: 36, borderRadius: 8, background: C.darkCard, display: "flex", alignItems: "center", justifyContent: "center", border: `1px solid ${C.bd}`, flexShrink: 0 }}>
+                      <span style={{ fontFamily: "'Playfair Display',serif", fontSize: 14, fontStyle: "italic", color: C.accent }}>P</span>
+                    </div>
+                    <div style={{ textAlign: "left" }}>
+                      <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 13, fontWeight: 600, color: C.paper }}>Add Piega to Chrome</div>
+                      <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 11, color: C.tertGrey }}>{"Free \u00B7 No signup \u00B7 10 seconds"}</div>
+                    </div>
+                  </div>
+                  <a href="#chrome-store" style={{ display: "block", padding: "9px 14px", background: C.terracotta, borderRadius: 4, textAlign: "center", fontFamily: "'Bebas Neue',sans-serif", fontSize: 13, color: C.paper, letterSpacing: "0.1em", textDecoration: "none" }}>
+                    {"ADD TO CHROME \u2192"}
+                  </a>
+                </div>
+
+                {/* Mobile */}
+                <div className="piega-mobile-only" style={{ marginBottom: 16 }}>
+                  <p style={{ fontFamily: "'EB Garamond',serif", fontSize: 14, color: C.tertGrey, lineHeight: 1.7, margin: "0 0 6px" }}>
+                    Chrome extension {"\u00B7"} Desktop only.
+                  </p>
+                </div>
+
+                {/* Email */}
+                <div className="piega-desktop-only" style={{ fontFamily: "'Inter',sans-serif", fontSize: 11, color: C.warmGrey, opacity: 0.5, margin: "0 0 10px" }}>{"\u2014 or \u2014"}</div>
+                <p style={{ fontFamily: "'EB Garamond',serif", fontSize: 13, color: C.warmGrey, margin: "0 0 10px", textAlign: "left" }}>
+                  Not ready? Leave your email.
+                </p>
+                {done ? (
+                  <div>
+                    <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 28, color: C.terracotta, letterSpacing: "0.04em" }}>DONE.</div>
+                    <p style={{ fontFamily: "'EB Garamond',serif", fontSize: 13, color: C.tertGrey, marginTop: 4 }}>{"We\u2019ll be in touch."}</p>
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", gap: 0 }}>
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && submitEmail()}
+                      placeholder="your@email.com"
+                      style={{
+                        flex: 1, padding: "9px 12px", border: `1px solid ${formError ? C.terracotta : C.bd}`,
+                        borderRight: "none", borderRadius: "4px 0 0 4px",
+                        background: C.darkMid, color: C.paper,
+                        fontFamily: "'EB Garamond',serif", fontSize: 14,
+                        outline: "none", transition: "border-color 0.3s",
+                      }}
+                    />
+                    <button
+                      onClick={submitEmail}
+                      disabled={submitting}
+                      style={{
+                        padding: "9px 14px", border: "none", borderRadius: "0 4px 4px 0",
+                        background: C.terracotta, color: C.paper, cursor: "pointer",
+                        fontFamily: "'Bebas Neue',sans-serif", fontSize: 12, letterSpacing: "0.1em",
+                        opacity: submitting ? 0.5 : 1, transition: "opacity 0.2s",
+                      }}
+                    >
+                      {submitting ? "\u2026" : "NOTIFY ME"}
+                    </button>
+                  </div>
+                )}
+                <p style={{ fontFamily: "'EB Garamond',serif", fontSize: 11, color: C.warmGrey, opacity: 0.4, marginTop: 10, textAlign: "left" }}>
+                  No payment. No signup. Just the building.
+                </p>
+              </div>
+
+              {/* Right — slider card grid */}
+              <div className="piega-split-grid-wrap">
+                {/* Activity header */}
+                {(() => {
+                  const dates = gridCards.map(c => c.createdAt).filter(Boolean).map(d => new Date(d));
+                  if (!dates.length) return null;
+                  const newest = Math.max(...dates);
+                  const oldest = Math.min(...dates);
+                  const spanDays = Math.max(1, Math.round((newest - oldest) / 86400000));
+                  return (
+                    <div style={{ padding: "0 0 14px", display: "flex", alignItems: "baseline", gap: 8 }}>
+                      <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 14, color: C.terracotta, letterSpacing: "0.08em" }}>
+                        {gridCards.length} REPORTS
+                      </span>
+                      <span style={{ fontFamily: "'EB Garamond',serif", fontSize: 13, fontStyle: "italic", color: C.warmGrey }}>
+                        {spanDays <= 1 ? "from today" : `from the last ${spanDays} days`}
+                      </span>
+                    </div>
+                  );
+                })()}
+                <div className="piega-card-grid">
+                  {gridCards.map((card, i) => (
+                    <MiniSliderCard key={`gc-${i}`} card={card} />
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : (
+            /* Fallback: centred CTA */
+            <div style={{ padding: "clamp(32px,5vh,56px) 24px", textAlign: "center" }}>
+              <div style={{ maxWidth: 540, margin: "0 auto" }}>
+                <h2 style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(22px,4vw,30px)", fontWeight: 700, color: C.paper, margin: "0 0 12px" }}>
+                  See what your building is hiding.
+                </h2>
+                <p style={{ fontFamily: "'EB Garamond',serif", fontSize: "clamp(15px,1.5vw,17px)", color: C.tertGrey, lineHeight: 1.7, margin: "0 0 24px" }}>
+                  {"Piega lives on Rightmove. Install the extension. Browse any listing. Click once. The full reading arrives before you\u2019ve finished your tea."}
+                </p>
+                <div className="piega-desktop-only" style={{ background: C.darkMid, border: `1px solid ${C.bd}`, borderRadius: 8, padding: "20px 24px", marginBottom: 16, maxWidth: 400, marginLeft: "auto", marginRight: "auto" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 16 }}>
+                    <div style={{ width: 40, height: 40, borderRadius: 8, background: C.darkCard, display: "flex", alignItems: "center", justifyContent: "center", border: `1px solid ${C.bd}`, flexShrink: 0 }}>
+                      <span style={{ fontFamily: "'Playfair Display',serif", fontSize: 16, fontStyle: "italic", color: C.accent }}>P</span>
+                    </div>
+                    <div style={{ textAlign: "left" }}>
+                      <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 14, fontWeight: 600, color: C.paper }}>Add Piega to Chrome</div>
+                      <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 12, color: C.tertGrey }}>{"Free \u00B7 No signup \u00B7 10 seconds"}</div>
+                    </div>
+                  </div>
+                  <a href="#chrome-store" style={{ display: "block", padding: "10px 16px", background: C.terracotta, borderRadius: 4, textAlign: "center", fontFamily: "'Bebas Neue',sans-serif", fontSize: 14, color: C.paper, letterSpacing: "0.1em", textDecoration: "none" }}>
+                    {"ADD TO CHROME \u2192"}
+                  </a>
+                </div>
+                <div className="piega-mobile-only" style={{ marginBottom: 20 }}>
+                  <p style={{ fontFamily: "'EB Garamond',serif", fontSize: 15, color: C.tertGrey, lineHeight: 1.7, margin: "0 0 6px" }}>
+                    Chrome extension {"\u00B7"} Desktop only.
+                  </p>
+                </div>
+                <div className="piega-desktop-only" style={{ fontFamily: "'Inter',sans-serif", fontSize: 11, color: C.warmGrey, opacity: 0.5, margin: "0 0 16px" }}>{"\u2014 or \u2014"}</div>
+                <p className="piega-desktop-only" style={{ fontFamily: "'EB Garamond',serif", fontSize: 14, color: C.warmGrey, margin: "0 0 12px" }}>
+                  Not ready? Leave your email.
+                </p>
+                {done ? (
+                  <div style={{ padding: "16px 0" }}>
+                    <div style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 36, color: C.terracotta, letterSpacing: "0.04em" }}>DONE.</div>
+                    <p style={{ fontFamily: "'EB Garamond',serif", fontSize: 14, color: C.tertGrey, marginTop: 8 }}>{"We\u2019ll be in touch."}</p>
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", gap: 0, maxWidth: 380, margin: "0 auto" }}>
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && submitEmail()}
+                      placeholder="your@email.com"
+                      style={{
+                        flex: 1, padding: "10px 14px", border: `1px solid ${formError ? C.terracotta : C.bd}`,
+                        borderRight: "none", borderRadius: "4px 0 0 4px",
+                        background: C.darkMid, color: C.paper,
+                        fontFamily: "'EB Garamond',serif", fontSize: 15,
+                        outline: "none", transition: "border-color 0.3s",
+                      }}
+                    />
+                    <button
+                      onClick={submitEmail}
+                      disabled={submitting}
+                      style={{
+                        padding: "10px 18px", border: "none", borderRadius: "0 4px 4px 0",
+                        background: C.terracotta, color: C.paper, cursor: "pointer",
+                        fontFamily: "'Bebas Neue',sans-serif", fontSize: 13, letterSpacing: "0.1em",
+                        opacity: submitting ? 0.5 : 1, transition: "opacity 0.2s",
+                      }}
+                    >
+                      {submitting ? "\u2026" : "NOTIFY ME"}
+                    </button>
+                  </div>
+                )}
+                <p style={{ fontFamily: "'EB Garamond',serif", fontSize: 12, color: C.warmGrey, opacity: 0.5, marginTop: 12 }}>
+                  No payment. No signup. Just the building.
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* ────────────────────────────────────────────────────────────
+            ZONE 5 — EDITORIAL BEATS (two remaining text breaks)
+            ──────────────────────────────────────────────────────────── */}
+        <div style={{ padding: "clamp(40px,6vh,56px) 24px", display: "flex", flexDirection: "column", gap: "clamp(40px,6vh,56px)", borderTop: `1px solid ${C.bd}` }}>
+          <TextBreak block={TEXT_BLOCKS[1]} />
+          <TextBreak block={TEXT_BLOCKS[2]} />
+        </div>
+
+        {/* ────────────────────────────────────────────────────────────
+            FOOTER
+            ──────────────────────────────────────────────────────────── */}
+        <footer style={{ borderTop: `1px solid ${C.bd}`, padding: "clamp(32px,5vh,48px) 24px clamp(24px,3vh,32px)", textAlign: "center" }}>
+          <div style={{ maxWidth: 480, margin: "0 auto" }}>
+            {/* Wordmark */}
+            <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 22, fontStyle: "italic", color: C.accent, marginBottom: 12 }}>Piega.</div>
+
+            {/* One-line promise */}
+            <p style={{ fontFamily: "'EB Garamond',serif", fontSize: "clamp(14px,1.4vw,16px)", color: C.tertGrey, lineHeight: 1.7, margin: "0 0 20px" }}>
+              Classification. Renovation vision. Cost estimate. Narrative.{"\n"}One Rightmove link, 90 seconds, the full reading.
+            </p>
+
+            {/* Secondary CTA — email for those who scrolled past the main one */}
+            {!done && (
+              <div style={{ maxWidth: 340, margin: "0 auto 20px" }}>
+                <div style={{ display: "flex", gap: 0 }}>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && submitEmail()}
+                    placeholder="your@email.com"
+                    style={{
+                      flex: 1, padding: "9px 12px", border: `1px solid ${formError ? C.terracotta : C.bd}`,
+                      borderRight: "none", borderRadius: "4px 0 0 4px",
+                      background: C.darkMid, color: C.paper,
+                      fontFamily: "'EB Garamond',serif", fontSize: 14,
+                      outline: "none", transition: "border-color 0.3s",
+                    }}
+                  />
+                  <button
+                    onClick={submitEmail}
+                    disabled={submitting}
+                    style={{
+                      padding: "9px 14px", border: "none", borderRadius: "0 4px 4px 0",
+                      background: C.terracotta, color: C.paper, cursor: "pointer",
+                      fontFamily: "'Bebas Neue',sans-serif", fontSize: 12, letterSpacing: "0.1em",
+                      opacity: submitting ? 0.5 : 1, transition: "opacity 0.2s",
+                    }}
+                  >
+                    NOTIFY ME
+                  </button>
+                </div>
+              </div>
+            )}
+            {done && (
+              <div style={{ marginBottom: 20 }}>
+                <span style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: 22, color: C.terracotta, letterSpacing: "0.04em" }}>DONE.</span>
+                <span style={{ fontFamily: "'EB Garamond',serif", fontSize: 13, color: C.tertGrey, marginLeft: 8 }}>{"We\u2019ll be in touch."}</span>
+              </div>
+            )}
+
+            {/* Links */}
+            <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 11, color: C.warmGrey, letterSpacing: "0.04em", marginBottom: 16 }}>
+              <a href="/pipeline" style={{ color: C.accent, textDecoration: "none", opacity: 0.7 }}>Pipeline Hub</a>
+              <span style={{ opacity: 0.3, margin: "0 10px" }}>{"\u00B7"}</span>
+              <a href="#chrome-store" className="piega-desktop-only" style={{ color: C.accent, textDecoration: "none", opacity: 0.7 }}>Add to Chrome</a>
+            </div>
+
+            {/* Legal line */}
+            <div style={{ fontFamily: "'EB Garamond',serif", fontSize: 12, color: C.warmGrey, opacity: 0.4, lineHeight: 1.7 }}>
+              {"Property intelligence \u00B7 United Kingdom"}
+              <br />
+              Not affiliated with any estate agent. That is the point.
+            </div>
+          </div>
+        </footer>
+
+      </div>
+    </>
   );
 }

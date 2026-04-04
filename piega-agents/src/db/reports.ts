@@ -178,6 +178,32 @@ export async function mergePipelineCost(
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// DELETE
+// ═══════════════════════════════════════════════════════════════════════════
+
+export async function deleteReport(id: string): Promise<void> {
+  const { error } = await getSupabase()
+    .from("piega_reports")
+    .delete()
+    .eq("id", id);
+
+  if (error) throw new Error(`Failed to delete report: ${error.message}`);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// RESET — wipe agent outputs, keep original listing data
+// ═══════════════════════════════════════════════════════════════════════════
+
+export async function resetReport(id: string): Promise<void> {
+  const { error } = await getSupabase()
+    .from("piega_reports")
+    .update({ results: {}, errors: [], status: "pending" as ReportStatus })
+    .eq("id", id);
+
+  if (error) throw new Error(`Failed to reset report: ${error.message}`);
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // APPEND ERROR
 // ═══════════════════════════════════════════════════════════════════════════
 

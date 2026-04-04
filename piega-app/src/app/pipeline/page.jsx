@@ -87,16 +87,51 @@ export default function PipelineIndexPage() {
   const router = useRouter();
   const [reports, setReports] = useState(null);
   const [error, setError] = useState(null);
+  const [busy, setBusy] = useState({}); // reportId → "deleting" | "relaunching"
 
-  useEffect(() => {
-    fetch(`${AGENTS_URL}/reports`)
+  function loadReports() {
+    fetch(`${AGENTS_URL}/reports?all=1`)
       .then((r) => {
         if (!r.ok) throw new Error(`HTTP ${r.status} — is piega-agents running on port 4711?`);
         return r.json();
       })
       .then(setReports)
       .catch((err) => setError(err.message));
+  }
+
+  useEffect(() => {
+    loadReports();
   }, []);
+
+  async function handleDelete(e, reportId) {
+    e.stopPropagation();
+    if (!confirm("Delete this report? This cannot be undone.")) return;
+    setBusy((b) => ({ ...b, [reportId]: "deleting" }));
+    try {
+      const res = await fetch(`${AGENTS_URL}/reports/${reportId}`, { method: "DELETE" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      setReports((prev) => prev.filter((r) => r.id !== reportId));
+    } catch (err) {
+      alert(`Delete failed: ${err.message}`);
+    } finally {
+      setBusy((b) => { const n = { ...b }; delete n[reportId]; return n; });
+    }
+  }
+
+  async function handleRelaunch(e, reportId) {
+    e.stopPropagation();
+    if (!confirm("Relaunch from scratch? All agent results will be wiped and the pipeline will restart.")) return;
+    setBusy((b) => ({ ...b, [reportId]: "relaunching" }));
+    try {
+      const res = await fetch(`${AGENTS_URL}/reports/${reportId}/relaunch`, { method: "POST" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      // Refresh the list after a brief pause so the server has reset the row
+      setTimeout(() => { loadReports(); setBusy((b) => { const n = { ...b }; delete n[reportId]; return n; }); }, 800);
+    } catch (err) {
+      alert(`Relaunch failed: ${err.message}`);
+      setBusy((b) => { const n = { ...b }; delete n[reportId]; return n; });
+    }
+  }
 
   return (
     <>
@@ -197,6 +232,7 @@ export default function PipelineIndexPage() {
                         padding: "14px 16px",
                         cursor: "pointer",
                         transition: "border-color 0.15s",
+                        opacity: busy[r.id] ? 0.5 : 1,
                       }}
                       onMouseEnter={(e) => (e.currentTarget.style.borderColor = C.accent + "60")}
                       onMouseLeave={(e) => (e.currentTarget.style.borderColor = C.bd)}
@@ -235,6 +271,33 @@ export default function PipelineIndexPage() {
                           <span style={{ fontSize: 9, color: C.warmGrey + "88" }}>
                             {new Date(r.created_at).toLocaleDateString("en-GB")}
                           </span>
+                          {/* Actions */}
+                          <div style={{ display: "flex", gap: 6, marginTop: 2 }} onClick={(e) => e.stopPropagation()}>
+                            <button
+                              disabled={!!busy[r.id]}
+                              onClick={(e) => handleRelaunch(e, r.id)}
+                              style={{
+                                fontSize: 10, padding: "3px 8px", borderRadius: 3,
+                                background: "transparent", border: `1px solid ${C.accent}50`,
+                                color: C.accent, cursor: "pointer", letterSpacing: 0.4,
+                                opacity: busy[r.id] === "relaunching" ? 0.5 : 1,
+                              }}
+                            >
+                              {busy[r.id] === "relaunching" ? "Relaunching…" : "Relaunch ↺"}
+                            </button>
+                            <button
+                              disabled={!!busy[r.id]}
+                              onClick={(e) => handleDelete(e, r.id)}
+                              style={{
+                                fontSize: 10, padding: "3px 8px", borderRadius: 3,
+                                background: "transparent", border: `1px solid ${C.terracotta}40`,
+                                color: C.terracotta, cursor: "pointer", letterSpacing: 0.4,
+                                opacity: busy[r.id] === "deleting" ? 0.5 : 1,
+                              }}
+                            >
+                              {busy[r.id] === "deleting" ? "Deleting…" : "Delete"}
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>

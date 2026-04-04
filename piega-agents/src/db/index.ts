@@ -10,6 +10,8 @@ export {
   mergeAgentResult,
   mergePipelineCost,
   appendReportError,
+  deleteReport,
+  resetReport,
   type ReportRow,
   type ReportStatus,
 } from "./reports.js";

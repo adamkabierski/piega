@@ -109,6 +109,7 @@ export const STYLES = `
     overflow: hidden;
     cursor: ew-resize;
     touch-action: none;
+    background: ${C.darkCard};
   }
   .piega-card-slider img {
     position: absolute;

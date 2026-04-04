@@ -46,8 +46,8 @@ function MiniSliderCard({ card }) {
         onMouseDown={(e) => { e.preventDefault(); dragging.current = true; move(e.clientX); }}
         onTouchStart={(e) => { dragging.current = true; move(e.touches[0].clientX); }}
       >
-        <img src={card.originalUrl} alt="" loading="lazy" style={{ zIndex: 1 }} onError={(e) => { e.target.style.display = "none"; }} />
-        <img src={card.renovatedUrl} alt="" loading="lazy" style={{ zIndex: 2, clipPath: `inset(0 0 0 ${split}%)` }} onError={(e) => { e.target.style.display = "none"; }} />
+        <img src={card.originalUrl} alt="" loading="lazy" style={{ zIndex: 1 }} onError={(e) => { e.target.style.opacity = "0"; }} />
+        <img src={card.renovatedUrl} alt="" loading="lazy" style={{ zIndex: 2, clipPath: `inset(0 0 0 ${split}%)` }} onError={(e) => { e.target.style.opacity = "0"; }} />
         <div className="piega-card-slider-handle" style={{ left: `${split}%` }} />
         {/* Labels */}
         <span className="piega-card-lbl piega-card-lbl-now">NOW</span>
@@ -128,14 +128,16 @@ export default function HomePage() {
   const [formError, setFormError] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [reports, setReports] = useState([]);
+  const [reportsLoaded, setReportsLoaded] = useState(false);
 
   useEffect(() => {
     (async () => {
       try {
         const res = await fetch(`${AGENTS_URL}/reports`);
-        if (!res.ok) return;
+        if (!res.ok) { setReportsLoaded(true); return; }
         setReports(await res.json());
       } catch {}
+      setReportsLoaded(true);
     })();
   }, []);
 
@@ -223,7 +225,14 @@ export default function HomePage() {
             ZONE 4 — SPLIT: CTA left + slider cards right
             ──────────────────────────────────────────────────────────── */}
         <div style={{ borderTop: `1px solid ${C.bd}` }}>
-          {hasGrid ? (
+          {!reportsLoaded ? (
+            /* Skeleton placeholder while reports load */
+            <div style={{ padding: "clamp(40px,6vh,64px) 24px", textAlign: "center" }}>
+              <div style={{ fontFamily: "'EB Garamond',serif", fontSize: 14, fontStyle: "italic", color: C.warmGrey, opacity: 0.5 }}>
+                Loading recent analyses{"\u2026"}
+              </div>
+            </div>
+          ) : hasGrid ? (
             <div className="piega-split">
               {/* Left — sticky CTA */}
               <div className="piega-split-cta">

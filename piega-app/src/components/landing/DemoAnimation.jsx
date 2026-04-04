@@ -205,21 +205,21 @@ export default function DemoAnimation({ demoImage, demoAfterImage, demoInteriorI
 
         {/* ═══════ Bottom: label + progress bar ═══════ */}
         <div style={{
-          position: "absolute", bottom: 0, left: 0, right: 0, height: 48,
-          padding: "0 28px 10px",
-          background: `linear-gradient(transparent, rgba(26,24,22,0.95) 30%)`,
-          display: "flex", flexDirection: "column", justifyContent: "flex-end",
+          position: "absolute", bottom: 0, left: 0, right: 0,
+          padding: "0 28px 12px",
+          background: `linear-gradient(transparent, rgba(26,24,22,0.97) 35%)`,
+          display: "flex", flexDirection: "column", gap: 8,
+          justifyContent: "flex-end",
         }}>
           {/* Phase label */}
-          <div style={{ textAlign: "center", marginBottom: 10, pointerEvents: "none" }}>
-            <span style={{ fontFamily: "'EB Garamond',serif", fontSize: "clamp(11px,1.3vw,14px)", fontStyle: "italic", color: C.accent, whiteSpace: "pre-line", lineHeight: 1.4 }}>
+          <div style={{ textAlign: "center", pointerEvents: "none" }}>
+            <span style={{ fontFamily: "'EB Garamond',serif", fontSize: "clamp(12px,1.4vw,15px)", fontStyle: "italic", color: C.accent, whiteSpace: "pre-line", lineHeight: 1.4 }}>
               {PHASE_LABELS[phase]}
             </span>
           </div>
 
-          {/* Progress bar + milestones */}
-          <div style={{ position: "relative", height: 14 }}>
-            {/* Milestone labels */}
+          {/* Milestone labels row */}
+          <div style={{ position: "relative", height: 16 }}>
             {MILESTONES.map((label, i) => (
               <span
                 key={i}
@@ -229,33 +229,34 @@ export default function DemoAnimation({ demoImage, demoAfterImage, demoInteriorI
                   left: `${MILESTONE_PCT[i]}%`,
                   top: 0,
                   transform: i === 0 ? "translateX(0)" : i === MILESTONES.length - 1 ? "translateX(-100%)" : "translateX(-50%)",
-                  fontFamily: "'Inter',sans-serif", fontSize: 7,
-                  letterSpacing: "0.04em", cursor: "pointer",
+                  fontFamily: "'Inter',sans-serif", fontSize: "clamp(9px,1vw,11px)",
+                  letterSpacing: "0.05em", cursor: "pointer",
                   color: phase === i ? C.accent : C.warmGrey,
-                  opacity: phase === i ? 1 : 0.4,
+                  opacity: phase === i ? 1 : 0.5,
                   transition: "all 0.3s",
+                  whiteSpace: "nowrap",
                 }}
               >{label}</span>
             ))}
+          </div>
 
-            {/* Bar track */}
-            <div style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 2, background: `${C.warmGrey}20`, borderRadius: 1 }}>
+          {/* Bar track + dots */}
+          <div style={{ position: "relative", height: 8, marginBottom: 0 }}>
+            <div style={{ position: "absolute", top: "50%", left: 0, right: 0, height: 2, transform: "translateY(-50%)", background: `${C.warmGrey}20`, borderRadius: 1 }}>
               <div ref={barRef} style={{ height: "100%", background: C.accent, borderRadius: 1, opacity: 0.5, width: "0%" }} />
             </div>
-
-            {/* Milestone dots */}
             {MILESTONE_PCT.map((pct, i) => (
               <div
                 key={i}
                 onClick={() => jumpToPhase(i)}
                 style={{
                   position: "absolute",
-                  left: `${pct}%`, bottom: -2,
-                  transform: "translate(-50%, 0)",
-                  width: 6, height: 6, borderRadius: "50%",
+                  left: `${pct}%`, top: "50%",
+                  transform: "translate(-50%, -50%)",
+                  width: 7, height: 7, borderRadius: "50%",
                   background: phase >= i ? C.accent : `${C.warmGrey}30`,
                   cursor: "pointer", transition: "all 0.3s",
-                  boxShadow: phase === i ? `0 0 6px ${C.accent}40` : "none",
+                  boxShadow: phase === i ? `0 0 8px ${C.accent}50` : "none",
                 }}
               />
             ))}

@@ -1,11 +1,80 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { C } from "@/lib/theme";
 import { AGENTS_URL } from "@/lib/config";
 import { STYLES } from "@/components/landing/styles";
 import { TEXT_BLOCKS, reportsToGridCards } from "@/components/landing/data";
 import DemoAnimation from "@/components/landing/DemoAnimation";
 import ReportCard from "@/components/landing/ReportCard";
+
+/* ---------- Mini slider card (grid) ---------- */
+
+function MiniSliderCard({ card }) {
+  const [split, setSplit] = useState(50);
+  const sliderRef = useRef(null);
+  const dragging = useRef(false);
+
+  const move = useCallback((clientX) => {
+    const el = sliderRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    setSplit(Math.max(5, Math.min(95, ((clientX - rect.left) / rect.width) * 100)));
+  }, []);
+
+  useEffect(() => {
+    const up = () => { dragging.current = false; };
+    const mv = (e) => { if (dragging.current) move(e.touches ? e.touches[0].clientX : e.clientX); };
+    window.addEventListener("mouseup", up);
+    window.addEventListener("mousemove", mv);
+    window.addEventListener("touchend", up);
+    window.addEventListener("touchmove", mv, { passive: true });
+    return () => {
+      window.removeEventListener("mouseup", up);
+      window.removeEventListener("mousemove", mv);
+      window.removeEventListener("touchend", up);
+      window.removeEventListener("touchmove", mv);
+    };
+  }, [move]);
+
+  const archLine = [card.era, card.archetypeLabel].filter(Boolean).join(" \u00B7 ");
+
+  return (
+    <div className="piega-prop-card">
+      {/* Slider */}
+      <div
+        ref={sliderRef}
+        className="piega-card-slider"
+        onMouseDown={(e) => { e.preventDefault(); dragging.current = true; move(e.clientX); }}
+        onTouchStart={(e) => { dragging.current = true; move(e.touches[0].clientX); }}
+      >
+        <img src={card.originalUrl} alt="" loading="lazy" style={{ zIndex: 1 }} onError={(e) => { e.target.style.display = "none"; }} />
+        <img src={card.renovatedUrl} alt="" loading="lazy" style={{ zIndex: 2, clipPath: `inset(0 0 0 ${split}%)` }} onError={(e) => { e.target.style.display = "none"; }} />
+        <div className="piega-card-slider-handle" style={{ left: `${split}%` }} />
+        {/* Labels */}
+        <span className="piega-card-lbl piega-card-lbl-now">NOW</span>
+        <span className="piega-card-lbl piega-card-lbl-poss">POSSIBLE</span>
+        <span className="piega-card-badge">{card.label.toUpperCase()}</span>
+      </div>
+      {/* Meta */}
+      <a href={card.reportId ? `/report/${card.reportId}` : undefined} style={{ textDecoration: "none", display: "block" }}>
+        <div className="piega-card-meta">
+          <p className="piega-card-name">{card.name}</p>
+          {archLine && <p className="piega-card-arch">{archLine}</p>}
+        </div>
+        {card.costStr && (
+          <div className="piega-card-cost">
+            <span className="piega-card-cost-label">Est. renovation</span>
+            <span className="piega-card-cost-num">{card.costStr}</span>
+          </div>
+        )}
+        {card.observation && (
+          <p className="piega-card-observation">{`\u201C${card.observation}\u201D`}</p>
+        )}
+        <span className="piega-card-foot">{`View full report \u2192`}</span>
+      </a>
+    </div>
+  );
+}
 
 /* ---------- Editorial text break (between report cards) ---------- */
 
@@ -285,27 +354,24 @@ export default function HomePage() {
                 </p>
               </div>
 
-              {/* Right — property card grid */}
+              {/* Right — enriched report card grid */}
               <div className="piega-split-grid-wrap">
+                {/* Freshness line */}
+                {(() => {
+                  const dates = gridCards.map(c => c.createdAt).filter(Boolean).map(d => new Date(d));
+                  if (!dates.length) return null;
+                  const newest = Math.max(...dates);
+                  const oldest = Math.min(...dates);
+                  const spanDays = Math.max(1, Math.round((newest - oldest) / 86400000));
+                  return (
+                    <div style={{ padding: "0 0 10px", fontFamily: "'Inter',sans-serif", fontSize: 10, color: C.warmGrey, opacity: 0.6, letterSpacing: "0.02em" }}>
+                      {gridCards.length} {gridCards.length === 1 ? "report" : "reports"} {"\u00B7"} generated in the last {spanDays} {spanDays === 1 ? "day" : "days"} by Piega users
+                    </div>
+                  );
+                })()}
                 <div className="piega-card-grid">
                   {gridCards.map((card, i) => (
-                    <a
-                      key={`gc-${i}`}
-                      href={card.reportId ? `/report/${card.reportId}` : undefined}
-                      className="piega-prop-card"
-                    >
-                      <div className="piega-card-img-wrap">
-                        <img className="piega-card-before" src={card.originalUrl} alt="" loading="lazy" onError={(e) => { e.target.style.display = "none"; }} />
-                        <img className="piega-card-after" src={card.renovatedUrl} alt="" loading="lazy" onError={(e) => { e.target.style.display = "none"; }} />
-                        <div className="piega-card-badge">{card.label.toUpperCase()}</div>
-                      </div>
-                      <div className="piega-card-meta">
-                        <p className="piega-card-name">{card.name}</p>
-                        {(card.archetypeLabel || card.era) && (
-                          <p className="piega-card-arch">{[card.era, card.archetypeLabel].filter(Boolean).join(" \u00B7 ")}</p>
-                        )}
-                      </div>
-                    </a>
+                    <MiniSliderCard key={`gc-${i}`} card={card} />
                   ))}
                 </div>
               </div>

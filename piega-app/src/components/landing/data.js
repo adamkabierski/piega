@@ -112,7 +112,7 @@ export function reportToBlocks(report) {
   return blocks;
 }
 
-/* ── Property cards for the CTA grid (before/after pairs, 16:9) ── */
+/* ── One card per report for the CTA grid ── */
 
 export function reportsToGridCards(reports) {
   const cards = [];
@@ -122,22 +122,52 @@ export function reportsToGridCards(reports) {
     const listing = report.listing ?? {};
     const classification = report.results?.classification;
     const archetype = classification?.archetype;
+    const costEstimate = report.results?.cost_estimate;
+
+    /* Best image pair: prefer first exterior, fall back to first interior */
+    const best = vis?.exteriors?.[0] ?? vis?.interiors?.[0];
+    if (!best?.originalUrl || !best?.renovatedUrl) continue;
+
     const name = listing.address?.split(",")[0]?.trim() ?? "Property";
     const archetypeLabel = archetype?.displayName ?? "";
     const era = archetype?.era ?? "";
-    const all = [...(vis?.exteriors ?? []), ...(vis?.interiors ?? [])];
-    for (const img of all) {
-      if (!img.renovatedUrl || !img.originalUrl) continue;
-      cards.push({
-        originalUrl: img.originalUrl,
-        renovatedUrl: img.renovatedUrl,
-        label: img.room ?? img.depicts ?? "Exterior",
-        name,
-        archetypeLabel,
-        era,
-        reportId: report.id,
-      });
+    const label = best.room ?? best.depicts ?? "Exterior";
+
+    /* Cost envelope */
+    const env = costEstimate?.totalEnvelope;
+    const costLow = env ? Math.round((env.low ?? 0) / 1000) : 0;
+    const costHigh = env ? Math.round((env.high ?? 0) / 1000) : 0;
+    const costStr = costLow > 0 && costHigh > 0 ? `\u00A3${costLow}K\u2013\u00A3${costHigh}K` : "";
+
+    /* Pick one observation from the classifier — proof Piega actually read the building */
+    let observation = "";
+    const classifiedImages = classification?.images ?? [];
+    const bestDepicts = best.depicts ?? best.room ?? "";
+    for (const ci of classifiedImages) {
+      const obs = ci.classification?.observations ?? [];
+      if (!obs.length) continue;
+      /* Prefer observations from the same image subject */
+      const d = ci.classification?.depicts ?? ci.classification?.room ?? "";
+      if (d && bestDepicts && d.toLowerCase().includes(bestDepicts.toLowerCase().split("_")[0])) {
+        observation = obs[0];
+        break;
+      }
+      /* Otherwise take the first non-trivial one we find */
+      if (!observation) observation = obs[0];
     }
+
+    cards.push({
+      originalUrl: best.originalUrl,
+      renovatedUrl: best.renovatedUrl,
+      label,
+      name,
+      archetypeLabel,
+      era,
+      costStr,
+      observation,
+      reportId: report.id,
+      createdAt: report.created_at ?? null,
+    });
   }
   return cards;
 }

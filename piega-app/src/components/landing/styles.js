@@ -70,7 +70,7 @@ export const STYLES = `
   }
   .piega-split-grid-wrap {
     overflow: hidden;
-    max-height: 1000px;
+    max-height: 1200px;
     position: relative;
     padding: 12px 12px 12px 0;
   }
@@ -197,7 +197,7 @@ export const STYLES = `
   .piega-card-arch {
     font-family: 'Inter', sans-serif;
     font-size: 11px;
-    color: ${C.warmGrey};
+    color: ${C.tertGrey};
     margin: 3px 0 0;
     white-space: nowrap;
     overflow: hidden;
@@ -211,8 +211,8 @@ export const STYLES = `
   }
   .piega-card-cost-label {
     font-family: 'Inter', sans-serif;
-    font-size: 9px;
-    color: ${C.warmGrey};
+    font-size: 10px;
+    color: ${C.tertGrey};
     text-transform: uppercase;
     letter-spacing: 0.04em;
   }
@@ -236,15 +236,27 @@ export const STYLES = `
     overflow: hidden;
   }
   .piega-card-foot {
-    padding: 6px 10px 9px;
+    display: block;
+    padding: 10px 12px;
+    margin-top: 6px;
+    border-top: 1px solid ${C.bd};
     font-family: 'Inter', sans-serif;
-    font-size: 10px;
+    font-size: 11px;
+    letter-spacing: 0.02em;
     color: ${C.accent};
-    opacity: 0.5;
-    transition: opacity 0.2s;
+    opacity: 0.75;
+    transition: opacity 0.2s, color 0.2s;
+  }
+  .piega-card-foot .piega-card-arrow {
+    display: inline-block;
+    transition: transform 0.2s;
   }
   .piega-prop-card:hover .piega-card-foot {
     opacity: 1;
+    color: ${C.terracotta};
+  }
+  .piega-prop-card:hover .piega-card-foot .piega-card-arrow {
+    transform: translateX(3px);
   }
 
   @media (max-width: 900px) {

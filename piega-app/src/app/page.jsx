@@ -69,7 +69,7 @@ function MiniSliderCard({ card }) {
         {card.observation && (
           <p className="piega-card-observation">{`\u201C${card.observation}\u201D`}</p>
         )}
-        <span className="piega-card-foot">{`View full report \u2192`}</span>
+        <span className="piega-card-foot">{"View full report "}<span className="piega-card-arrow">{"\u2192"}</span></span>
       </a>
     </div>
   );
@@ -87,7 +87,7 @@ function TextBreak({ block }) {
     return (
       <div style={base}>
         {block.lines.map((line, i) => (
-          <div key={i} style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: "clamp(14px,1.8vw,17px)", color: C.paper, opacity: 0.35, letterSpacing: "0.04em", lineHeight: 1.6 }}>{line}</div>
+          <div key={i} style={{ fontFamily: "'Bebas Neue',sans-serif", fontSize: "clamp(14px,1.8vw,17px)", color: C.warmGrey, letterSpacing: "0.04em", lineHeight: 1.6 }}>{line}</div>
         ))}
         <div style={{ fontFamily: "'Playfair Display',serif", fontSize: "clamp(16px,2vw,20px)", fontStyle: "italic", color: C.terracotta, marginTop: 14, lineHeight: 1.5, whiteSpace: "pre-line" }}>{block.punchline}</div>
       </div>
@@ -228,7 +228,7 @@ export default function HomePage() {
           {!reportsLoaded ? (
             /* Skeleton placeholder while reports load */
             <div style={{ padding: "clamp(40px,6vh,64px) 24px", textAlign: "center" }}>
-              <div style={{ fontFamily: "'EB Garamond',serif", fontSize: 14, fontStyle: "italic", color: C.warmGrey, opacity: 0.5 }}>
+              <div style={{ fontFamily: "'EB Garamond',serif", fontSize: 14, fontStyle: "italic", color: C.warmGrey }}>
                 Loading recent analyses{"\u2026"}
               </div>
             </div>
@@ -267,7 +267,7 @@ export default function HomePage() {
                 </div>
 
                 {/* Email */}
-                <div className="piega-desktop-only" style={{ fontFamily: "'Inter',sans-serif", fontSize: 11, color: C.warmGrey, opacity: 0.5, margin: "0 0 10px" }}>{"\u2014 or \u2014"}</div>
+                <div className="piega-desktop-only" style={{ fontFamily: "'Inter',sans-serif", fontSize: 11, color: C.warmGrey, opacity: 0.35, margin: "0 0 10px" }}>{"\u2014 or \u2014"}</div>
                 <p style={{ fontFamily: "'EB Garamond',serif", fontSize: 13, color: C.warmGrey, margin: "0 0 10px", textAlign: "left" }}>
                   Not ready? Leave your email.
                 </p>
@@ -306,7 +306,7 @@ export default function HomePage() {
                     </button>
                   </div>
                 )}
-                <p style={{ fontFamily: "'EB Garamond',serif", fontSize: 11, color: C.warmGrey, opacity: 0.4, marginTop: 10, textAlign: "left" }}>
+                <p style={{ fontFamily: "'EB Garamond',serif", fontSize: 12, color: C.warmGrey, marginTop: 10, textAlign: "left" }}>
                   No payment. No signup. Just the building.
                 </p>
               </div>
@@ -367,7 +367,7 @@ export default function HomePage() {
                     Chrome extension {"\u00B7"} Desktop only.
                   </p>
                 </div>
-                <div className="piega-desktop-only" style={{ fontFamily: "'Inter',sans-serif", fontSize: 11, color: C.warmGrey, opacity: 0.5, margin: "0 0 16px" }}>{"\u2014 or \u2014"}</div>
+                <div className="piega-desktop-only" style={{ fontFamily: "'Inter',sans-serif", fontSize: 11, color: C.warmGrey, opacity: 0.35, margin: "0 0 16px" }}>{"\u2014 or \u2014"}</div>
                 <p className="piega-desktop-only" style={{ fontFamily: "'EB Garamond',serif", fontSize: 14, color: C.warmGrey, margin: "0 0 12px" }}>
                   Not ready? Leave your email.
                 </p>
@@ -406,7 +406,7 @@ export default function HomePage() {
                     </button>
                   </div>
                 )}
-                <p style={{ fontFamily: "'EB Garamond',serif", fontSize: 12, color: C.warmGrey, opacity: 0.5, marginTop: 12 }}>
+                <p style={{ fontFamily: "'EB Garamond',serif", fontSize: 12, color: C.warmGrey, marginTop: 12 }}>
                   No payment. No signup. Just the building.
                 </p>
               </div>
@@ -477,13 +477,13 @@ export default function HomePage() {
 
             {/* Links */}
             <div style={{ fontFamily: "'Inter',sans-serif", fontSize: 11, color: C.warmGrey, letterSpacing: "0.04em", marginBottom: 16 }}>
-              <a href="/pipeline" style={{ color: C.accent, textDecoration: "none", opacity: 0.7 }}>Pipeline Hub</a>
+              <a href="/pipeline" style={{ color: C.accent, textDecoration: "none" }}>Pipeline Hub</a>
               <span style={{ opacity: 0.3, margin: "0 10px" }}>{"\u00B7"}</span>
-              <a href="#chrome-store" className="piega-desktop-only" style={{ color: C.accent, textDecoration: "none", opacity: 0.7 }}>Add to Chrome</a>
+              <a href="#chrome-store" className="piega-desktop-only" style={{ color: C.accent, textDecoration: "none" }}>Add to Chrome</a>
             </div>
 
             {/* Legal line */}
-            <div style={{ fontFamily: "'EB Garamond',serif", fontSize: 12, color: C.warmGrey, opacity: 0.4, lineHeight: 1.7 }}>
+            <div style={{ fontFamily: "'EB Garamond',serif", fontSize: 12, color: C.warmGrey, lineHeight: 1.7 }}>
               {"Property intelligence \u00B7 United Kingdom"}
               <br />
               Not affiliated with any estate agent. That is the point.
